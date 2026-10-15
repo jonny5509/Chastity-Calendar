@@ -9,7 +9,7 @@ from .const import DOMAIN
 from .obedience_points import ObediencePoints
 from .session_tracker import SessionHistory
 
-PLATFORMS = [Platform.CALENDAR, Platform.BINARY_SENSOR]
+PLATFORMS = [Platform.CALENDAR, Platform.BINARY_SENSOR, Platform.SENSOR]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
