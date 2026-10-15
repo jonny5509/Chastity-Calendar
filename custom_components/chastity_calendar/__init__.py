@@ -23,7 +23,7 @@ from .const import (
 from .obedience_points import ObediencePoints
 from .random_captions import async_setup_random_captions
 
-PLATFORMS = [Platform.CALENDAR, Platform.BINARY_SENSOR, Platform.SENSOR]
+PLATFORMS = [Platform.CALENDAR, Platform.BINARY_SENSOR, Platform.SENSOR, Platform.BUTTON]
 _LOGGER = logging.getLogger(__name__)
 
 
