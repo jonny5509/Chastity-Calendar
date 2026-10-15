@@ -199,6 +199,8 @@ class SessionHistory:
                     parsed = datetime.fromtimestamp(float(value), dt_util.DEFAULT_TIME_ZONE)
                 elif parsed.tzinfo is None:
                     parsed = parsed.replace(tzinfo=dt_util.DEFAULT_TIME_ZONE)
+                else:
+                    parsed = dt_util.as_local(parsed)
             else:
                 return None
             return parsed.strftime("%H:%M")
