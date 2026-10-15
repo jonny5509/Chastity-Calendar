@@ -16,6 +16,7 @@ from .const import (
     CONF_EMLALOCK_USER_ID,
     CONF_EVENTS,
     CONF_POLL_MINUTES,
+    CONF_OBEDIENCE_ENABLED,
     CONF_OBEDIENCE_EXTENSION_ID,
     CONF_OBEDIENCE_SECRET,
     CONF_OBEDIENCE_DAILY_HABIT_ID,
@@ -41,6 +42,7 @@ class ChastityCalendarConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     def __init__(self):
         self._selected_services = []
         self._service_data = {}
+        self._configure_obedience = False
 
     async def async_step_user(self, user_input=None):
         """Select which services to configure."""
@@ -54,18 +56,23 @@ class ChastityCalendarConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self._service_data = {
                 CONF_EVENTS: DEFAULT_EVENTS,
                 CONF_SERVICES: self._selected_services,
+                CONF_OBEDIENCE_ENABLED: bool(user_input.get(CONF_OBEDIENCE_ENABLED, False)),
             }
+            self._configure_obedience = self._service_data[CONF_OBEDIENCE_ENABLED]
             return await self._async_next_service(0)
         return self.async_show_form(
             step_id="user",
             data_schema=vol.Schema({
-                vol.Required(CONF_SERVICES, default=[]): cv.multi_select(SERVICE_OPTIONS)
+                vol.Required(CONF_SERVICES, default=[]): cv.multi_select(SERVICE_OPTIONS),
+                vol.Optional(CONF_OBEDIENCE_ENABLED, default=False): bool,
             }),
         )
 
     async def _async_next_service(self, index):
         """Show a credentials page only for each selected service."""
         if index >= len(self._selected_services):
+            if self._configure_obedience:
+                return await self.async_step_obedience()
             return self.async_create_entry(
                 title="Chastity Calendar", data=self._service_data
             )
@@ -104,6 +111,23 @@ class ChastityCalendarConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             vol.Optional(CONF_CHASTIFY_DEV_TOKEN, default=""): str,
         }))
 
+    async def async_step_obedience(self, user_input=None):
+        """Configure optional Obedience habit syncing on its own page."""
+        if user_input is not None:
+            self._service_data.update({
+                CONF_OBEDIENCE_EXTENSION_ID: user_input.get(CONF_OBEDIENCE_EXTENSION_ID, "").strip(),
+                CONF_OBEDIENCE_SECRET: user_input.get(CONF_OBEDIENCE_SECRET, "").strip(),
+                CONF_OBEDIENCE_DAILY_HABIT_ID: user_input.get(CONF_OBEDIENCE_DAILY_HABIT_ID, "").strip(),
+                CONF_OBEDIENCE_YEARLY_HABIT_ID: user_input.get(CONF_OBEDIENCE_YEARLY_HABIT_ID, "").strip(),
+            })
+            return self.async_create_entry(title="Chastity Calendar", data=self._service_data)
+        return self.async_show_form(step_id="obedience", data_schema=vol.Schema({
+            vol.Optional(CONF_OBEDIENCE_EXTENSION_ID, default=""): str,
+            vol.Optional(CONF_OBEDIENCE_SECRET, default=""): str,
+            vol.Optional(CONF_OBEDIENCE_DAILY_HABIT_ID, default=""): str,
+            vol.Optional(CONF_OBEDIENCE_YEARLY_HABIT_ID, default=""): str,
+        }))
+
     @staticmethod
     @callback
     def async_get_options_flow(config_entry):
@@ -121,6 +145,7 @@ class ChastityCalendarOptionsFlow(config_entries.OptionsFlow):
         self._poll_minutes = 5
         self._notification_destination = "home_assistant"
         self._notification_targets = []
+        self._configure_obedience = False
 
     async def async_step_init(self, user_input=None):
         current = {**self._config_entry.data, **self._config_entry.options}
@@ -149,17 +174,17 @@ class ChastityCalendarOptionsFlow(config_entries.OptionsFlow):
                     service for service in SERVICE_ORDER
                     if service in user_input.get(CONF_SERVICES, [])
                 ]
+                self._configure_obedience = bool(user_input.get(CONF_OBEDIENCE_ENABLED, False))
                 self._service_data = {
                     CONF_EVENTS: parsed,
                     CONF_SERVICES: self._selected_services,
                     CONF_POLL_MINUTES: int(user_input[CONF_POLL_MINUTES]),
                     CONF_MONTHLY_NOTIFICATION_DESTINATION: user_input.get(CONF_MONTHLY_NOTIFICATION_DESTINATION, "home_assistant"),
                     CONF_MONTHLY_NOTIFICATION_TARGETS: user_input.get(CONF_MONTHLY_NOTIFICATION_TARGETS, []),
-                    CONF_OBEDIENCE_EXTENSION_ID: user_input.get(CONF_OBEDIENCE_EXTENSION_ID, "").strip(),
-                    CONF_OBEDIENCE_SECRET: user_input.get(CONF_OBEDIENCE_SECRET, "").strip(),
-                    CONF_OBEDIENCE_DAILY_HABIT_ID: user_input.get(CONF_OBEDIENCE_DAILY_HABIT_ID, "").strip(),
-                    CONF_OBEDIENCE_YEARLY_HABIT_ID: user_input.get(CONF_OBEDIENCE_YEARLY_HABIT_ID, "").strip(),
+                    CONF_OBEDIENCE_ENABLED: self._configure_obedience,
                 }
+                for key in (CONF_OBEDIENCE_EXTENSION_ID, CONF_OBEDIENCE_SECRET, CONF_OBEDIENCE_DAILY_HABIT_ID, CONF_OBEDIENCE_YEARLY_HABIT_ID):
+                    self._service_data[key] = current.get(key, "")
                 # Preserve credentials for services that remain selected until their
                 # dedicated page is submitted, while dropping credentials for deselected services.
                 for service, keys in {
@@ -181,6 +206,8 @@ class ChastityCalendarOptionsFlow(config_entries.OptionsFlow):
 
     async def _async_next_service(self, index):
         if index >= len(self._selected_services):
+            if self._configure_obedience:
+                return await self.async_step_obedience()
             return self.async_create_entry(title="", data=self._service_data)
         service = self._selected_services[index]
         return await getattr(self, f"async_step_{service}")()
@@ -211,17 +238,31 @@ class ChastityCalendarOptionsFlow(config_entries.OptionsFlow):
             vol.Optional(CONF_CHASTIFY_DEV_TOKEN, default=self._service_data.get(CONF_CHASTIFY_DEV_TOKEN, "")): str,
         }))
 
+    async def async_step_obedience(self, user_input=None):
+        """Edit Obedience credentials separately from calendar options."""
+        if user_input is not None:
+            self._service_data.update({
+                CONF_OBEDIENCE_EXTENSION_ID: user_input.get(CONF_OBEDIENCE_EXTENSION_ID, "").strip(),
+                CONF_OBEDIENCE_SECRET: user_input.get(CONF_OBEDIENCE_SECRET, "").strip(),
+                CONF_OBEDIENCE_DAILY_HABIT_ID: user_input.get(CONF_OBEDIENCE_DAILY_HABIT_ID, "").strip(),
+                CONF_OBEDIENCE_YEARLY_HABIT_ID: user_input.get(CONF_OBEDIENCE_YEARLY_HABIT_ID, "").strip(),
+            })
+            return self.async_create_entry(title="", data=self._service_data)
+        return self.async_show_form(step_id="obedience", data_schema=vol.Schema({
+            vol.Optional(CONF_OBEDIENCE_EXTENSION_ID, default=self._service_data.get(CONF_OBEDIENCE_EXTENSION_ID, "")): str,
+            vol.Optional(CONF_OBEDIENCE_SECRET, default=self._service_data.get(CONF_OBEDIENCE_SECRET, "")): str,
+            vol.Optional(CONF_OBEDIENCE_DAILY_HABIT_ID, default=self._service_data.get(CONF_OBEDIENCE_DAILY_HABIT_ID, "")): str,
+            vol.Optional(CONF_OBEDIENCE_YEARLY_HABIT_ID, default=self._service_data.get(CONF_OBEDIENCE_YEARLY_HABIT_ID, "")): str,
+        }))
+
     @staticmethod
     def _schema(values):
         events = values.get(CONF_EVENTS, DEFAULT_EVENTS)
         return vol.Schema({
             vol.Required(CONF_EVENTS, default=json.dumps(events, indent=2)): str,
             vol.Required(CONF_SERVICES, default=values.get(CONF_SERVICES, [])): cv.multi_select(SERVICE_OPTIONS),
+            vol.Optional(CONF_OBEDIENCE_ENABLED, default=values.get(CONF_OBEDIENCE_ENABLED, bool(values.get(CONF_OBEDIENCE_EXTENSION_ID) and values.get(CONF_OBEDIENCE_SECRET)))): bool,
             vol.Required(CONF_POLL_MINUTES, default=values.get(CONF_POLL_MINUTES, 5)): vol.All(int, vol.Range(min=1, max=60)),
             vol.Required(CONF_MONTHLY_NOTIFICATION_DESTINATION, default=values.get(CONF_MONTHLY_NOTIFICATION_DESTINATION, "home_assistant")): vol.In(NOTIFICATION_DESTINATIONS),
             vol.Optional(CONF_MONTHLY_NOTIFICATION_TARGETS, default=values.get(CONF_MONTHLY_NOTIFICATION_TARGETS, [])): selector.EntitySelector(selector.EntitySelectorConfig(domain="notify", multiple=True)),
-            vol.Optional(CONF_OBEDIENCE_EXTENSION_ID, default=values.get(CONF_OBEDIENCE_EXTENSION_ID, "")): str,
-            vol.Optional(CONF_OBEDIENCE_SECRET, default=values.get(CONF_OBEDIENCE_SECRET, "")): str,
-            vol.Optional(CONF_OBEDIENCE_DAILY_HABIT_ID, default=values.get(CONF_OBEDIENCE_DAILY_HABIT_ID, "")): str,
-            vol.Optional(CONF_OBEDIENCE_YEARLY_HABIT_ID, default=values.get(CONF_OBEDIENCE_YEARLY_HABIT_ID, "")): str,
         })
