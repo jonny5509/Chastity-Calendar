@@ -14,7 +14,7 @@ from .const import (
     CONF_MONTHLY_NOTIFICATION_TARGETS,
     DOMAIN,
 )
-from .random_captions import CAPTIONS
+from .random_captions import get_captions
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -48,7 +48,7 @@ class UpliftingCaptionButton(ButtonEntity):
             CONF_MONTHLY_NOTIFICATION_DESTINATION, "home_assistant"
         )
         targets = settings.get(CONF_MONTHLY_NOTIFICATION_TARGETS, [])
-        message = random.choice(CAPTIONS)
+        message = random.choice(get_captions(settings))
         title = "Chastity Calendar — A Little Encouragement"
         delivered = False
 
