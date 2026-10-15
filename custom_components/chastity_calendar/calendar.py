@@ -5,6 +5,7 @@ from typing import Any
 from homeassistant.components.calendar import CalendarEntity, CalendarEvent
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.util import dt as dt_util
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import CONF_EVENTS, DEFAULT_EVENTS, DOMAIN
 
@@ -37,7 +38,7 @@ class ChastityCalendar(CalendarEntity):
 
     @property
     def event(self) -> CalendarEvent | None:
-        today = date.today()
+        today = dt_util.now().date()
         candidates = self._events_between(date(today.year, 1, 1), date(today.year + 3, 1, 1))
         for event in candidates:
             if event.start >= today or event.start <= today < event.end:
