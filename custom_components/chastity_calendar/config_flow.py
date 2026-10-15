@@ -7,6 +7,7 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import selector
 
 from .const import (
     CONF_CHASTER_API_TOKEN,
@@ -15,6 +16,9 @@ from .const import (
     CONF_EMLALOCK_USER_ID,
     CONF_EVENTS,
     CONF_POLL_MINUTES,
+    CONF_MONTHLY_NOTIFICATION_DESTINATION,
+    CONF_MONTHLY_NOTIFICATION_TARGETS,
+    NOTIFICATION_DESTINATIONS,
     CONF_SERVICES,
     SERVICE_OPTIONS,
     DEFAULT_EVENTS,
@@ -111,11 +115,15 @@ class ChastityCalendarOptionsFlow(config_entries.OptionsFlow):
         self._service_data = {}
         self._events = DEFAULT_EVENTS
         self._poll_minutes = 5
+        self._notification_destination = "home_assistant"
+        self._notification_targets = []
 
     async def async_step_init(self, user_input=None):
         current = {**self._config_entry.data, **self._config_entry.options}
         self._events = current.get(CONF_EVENTS, DEFAULT_EVENTS)
         self._poll_minutes = current.get(CONF_POLL_MINUTES, 5)
+        self._notification_destination = current.get(CONF_MONTHLY_NOTIFICATION_DESTINATION, "home_assistant")
+        self._notification_targets = current.get(CONF_MONTHLY_NOTIFICATION_TARGETS, [])
         if user_input is not None:
             try:
                 parsed = json.loads(user_input[CONF_EVENTS])
@@ -141,6 +149,8 @@ class ChastityCalendarOptionsFlow(config_entries.OptionsFlow):
                     CONF_EVENTS: parsed,
                     CONF_SERVICES: self._selected_services,
                     CONF_POLL_MINUTES: int(user_input[CONF_POLL_MINUTES]),
+                    CONF_MONTHLY_NOTIFICATION_DESTINATION: user_input.get(CONF_MONTHLY_NOTIFICATION_DESTINATION, "home_assistant"),
+                    CONF_MONTHLY_NOTIFICATION_TARGETS: user_input.get(CONF_MONTHLY_NOTIFICATION_TARGETS, []),
                 }
                 # Preserve credentials for services that remain selected until their
                 # dedicated page is submitted, while dropping credentials for deselected services.
@@ -200,4 +210,6 @@ class ChastityCalendarOptionsFlow(config_entries.OptionsFlow):
             vol.Required(CONF_EVENTS, default=json.dumps(events, indent=2)): str,
             vol.Required(CONF_SERVICES, default=values.get(CONF_SERVICES, [])): cv.multi_select(SERVICE_OPTIONS),
             vol.Required(CONF_POLL_MINUTES, default=values.get(CONF_POLL_MINUTES, 5)): vol.All(int, vol.Range(min=1, max=60)),
+            vol.Required(CONF_MONTHLY_NOTIFICATION_DESTINATION, default=values.get(CONF_MONTHLY_NOTIFICATION_DESTINATION, "home_assistant")): vol.In(NOTIFICATION_DESTINATIONS),
+            vol.Optional(CONF_MONTHLY_NOTIFICATION_TARGETS, default=values.get(CONF_MONTHLY_NOTIFICATION_TARGETS, [])): selector.EntitySelector(selector.EntitySelectorConfig(domain="notify", multiple=True)),
         })
