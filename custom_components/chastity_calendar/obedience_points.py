@@ -37,6 +37,7 @@ class ObediencePoints:
             "completed_days": [],
             "total_points": 0,
             "yearly_bonus_awarded": False,
+            "obedience_synced_days": [],
             "yearly_obedience_synced": False,
         }
 
@@ -45,30 +46,33 @@ class ObediencePoints:
         saved = await self.store.async_load()
         if isinstance(saved, dict):
             self.data.update(saved)
-        if not isinstance(self.data.get("completed_days"), list):
-            self.data["completed_days"] = []
+        for key in ("completed_days", "obedience_synced_days"):
+            if not isinstance(self.data.get(key), list):
+                self.data[key] = []
+
+        # Backward compatibility with the previous tracker format.
+        self.data.setdefault("yearly_obedience_synced", False)
 
     async def async_mark_complete(self, call: ServiceCall) -> None:
-        """Record one completed day, awarding each date at most once."""
+        """Record a date once and retry any Obedience sync still pending for it."""
         raw_date = call.data.get("date")
         completed_date = raw_date if isinstance(raw_date, date) else dt_util.now().date()
         date_key = completed_date.isoformat()
-        completed_days = set(self.data["completed_days"])
-        if date_key in completed_days:
-            _LOGGER.debug("Completion for %s was already recorded", date_key)
-            return
 
-        completed_days.add(date_key)
-        self.data["completed_days"] = sorted(completed_days)
-        should_award_yearly = (
-            len(completed_days) >= YEARLY_COMPLETIONS
-            and not self.data.get("yearly_bonus_awarded", False)
-        )
-        if should_award_yearly:
-            self.data["yearly_bonus_awarded"] = True
-        self.data["total_points"] = len(completed_days) * DAILY_POINTS
-        if self.data.get("yearly_bonus_awarded", False):
-            self.data["total_points"] += YEARLY_BONUS
+        completed_days = set(self.data["completed_days"])
+        is_new_completion = date_key not in completed_days
+        if is_new_completion:
+            completed_days.add(date_key)
+            self.data["completed_days"] = sorted(completed_days)
+            should_award_yearly = (
+                len(completed_days) >= YEARLY_COMPLETIONS
+                and not self.data.get("yearly_bonus_awarded", False)
+            )
+            if should_award_yearly:
+                self.data["yearly_bonus_awarded"] = True
+            self.data["total_points"] = len(completed_days) * DAILY_POINTS
+            if self.data.get("yearly_bonus_awarded", False):
+                self.data["total_points"] += YEARLY_BONUS
 
         options = {**self.entry.data, **self.entry.options}
         extension_id = options.get(CONF_OBEDIENCE_EXTENSION_ID)
@@ -76,22 +80,34 @@ class ObediencePoints:
         daily_habit = options.get(CONF_OBEDIENCE_DAILY_HABIT_ID)
         yearly_habit = options.get(CONF_OBEDIENCE_YEARLY_HABIT_ID)
 
+        # Local completion is authoritative. Persist it before making network calls,
+        # so a failed optional Obedience API request never loses the points.
+        await self.store.async_save(self.data)
+
         if extension_id and secret:
             try:
-                if daily_habit:
+                synced_days = set(self.data["obedience_synced_days"])
+                if daily_habit and date_key not in synced_days:
                     await self._increment_habit(extension_id, secret, daily_habit)
-                if self.data.get("yearly_bonus_awarded", False) and yearly_habit and not self.data.get("yearly_obedience_synced", False):
+                    synced_days.add(date_key)
+                    self.data["obedience_synced_days"] = sorted(synced_days)
+                    await self.store.async_save(self.data)
+
+                if (
+                    self.data.get("yearly_bonus_awarded", False)
+                    and yearly_habit
+                    and not self.data.get("yearly_obedience_synced", False)
+                ):
                     await self._increment_habit(extension_id, secret, yearly_habit)
                     self.data["yearly_obedience_synced"] = True
+                    await self.store.async_save(self.data)
             except (aiohttp.ClientError, TimeoutError, ValueError) as err:
-                _LOGGER.warning("Could not sync completion to Obedience: %s", err)
-                await self.store.async_save(self.data)
-                async_dispatcher_send(
-                    self.hass, f"{DOMAIN}_points_updated_{self.entry.entry_id}"
+                _LOGGER.warning(
+                    "Could not sync completion to Obedience; it can be retried "
+                    "by calling mark_day_complete for the same date: %s",
+                    err,
                 )
-                return
 
-        await self.store.async_save(self.data)
         async_dispatcher_send(
             self.hass, f"{DOMAIN}_points_updated_{self.entry.entry_id}"
         )
