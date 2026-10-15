@@ -1,17 +1,17 @@
 {
   "domain": "chastity_calendar",
   "name": "Chastity Calendar",
-  "version": "1.0.0",
-  "documentation": "https://github.com/jonny5509/calendar",
-  "issue_tracker": "https://github.com/jonny5509/calendar/issues",
+  "after_dependencies": [
+    "cloud",
+    "http"
+  ],
   "codeowners": [
     "@jonny5509"
   ],
   "config_flow": true,
+  "documentation": "https://github.com/jonny5509/calendar",
   "integration_type": "service",
   "iot_class": "cloud_polling",
-  "after_dependencies": [
-    "cloud",
-    "http"
-  ]
+  "issue_tracker": "https://github.com/jonny5509/calendar/issues",
+  "version": "1.0.0"
 }
