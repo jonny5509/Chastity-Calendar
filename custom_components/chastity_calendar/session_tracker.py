@@ -81,6 +81,8 @@ class SessionHistory:
         additions: dict[str, dict[str, Any]] = {}
         # Keep one emoji per service/session so backfilled days look consistent.
         session_emojis = self.history.setdefault("_session_emojis", {})
+        session_entries = self.history.setdefault("_sessions", {})
+        session_entries_before = {key: dict(value) for key, value in session_entries.items()}
 
         async def add_span(
             service: str,
@@ -92,6 +94,17 @@ class SessionHistory:
                 return
             session_key = f"{service}:{session_id or start.isoformat()}"
             emoji = session_emojis.setdefault(session_key, random.choice(EMOJIS))
+            session_entry = session_entries.setdefault(
+                session_key,
+                {
+                    "service": service,
+                    "start": start.isoformat(),
+                    "start_time": start_time,
+                    "emoji": emoji,
+                },
+            )
+            if not session_entry.get("start_time") and start_time:
+                session_entry["start_time"] = start_time
             day = start
             while day <= today:
                 record = additions.setdefault(
@@ -209,7 +222,7 @@ class SessionHistory:
             except (aiohttp.ClientError, ValueError, TypeError, KeyError) as err:
                 _LOGGER.warning("Unable to refresh Chaster session status (%s)", type(err).__name__)
 
-        changed = status_changed
+        changed = status_changed or session_entries != session_entries_before
         for day, incoming in additions.items():
             record = self.history.setdefault(day, {"emoji": next(iter(incoming["emojis"]), "✨"), "services": []})
             existing_emojis = set(record.get("emojis", []))
@@ -279,7 +292,7 @@ class SessionHistory:
 
     @callback
     def events_between(self, start: date, end: date) -> list[dict[str, Any]]:
-        """Return persisted daily events in the requested date range."""
+        """Return daily activity and a separate calendar event for each session start."""
         result = []
         for day, record in sorted(self.history.items()):
             try:
@@ -302,4 +315,28 @@ class SessionHistory:
                     "summary": summary,
                     "description": description,
                 })
+        # Keep each session start visible as its own event instead of merging all
+        # starts on a day into the generic daily activity entry.
+        for session_key, session in self.history.get("_sessions", {}).items():
+            try:
+                event_date = date.fromisoformat(session["start"])
+            except (KeyError, TypeError, ValueError):
+                continue
+            if not start <= event_date < end:
+                continue
+            service = str(session.get("service", session_key.split(":", 1)[0]))
+            emoji = str(session.get("emoji", "✨"))
+            start_time = session.get("start_time")
+            summary = f"{emoji} {service} — Session started"
+            if start_time:
+                summary += f" at {start_time}"
+            description = f"Individual session start for {service}. Start date: {event_date.isoformat()}."
+            if start_time:
+                description += f" Local start time: {start_time}."
+            result.append({
+                "start": event_date,
+                "end": event_date + timedelta(days=1),
+                "summary": summary,
+                "description": description,
+            })
         return result
