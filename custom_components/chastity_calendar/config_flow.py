@@ -30,6 +30,7 @@ from .const import (
     CONF_MONTHLY_NOTIFICATION_DESTINATION,
     CONF_MONTHLY_NOTIFICATION_TARGETS,
     CONF_RANDOM_CAPTIONS_ENABLED,
+    CONF_RELATIONSHIP_CAPTIONS_ENABLED,
     NOTIFICATION_DESTINATIONS,
     CONF_SERVICES,
     SERVICE_OPTIONS,
@@ -192,6 +193,7 @@ class ChastityCalendarOptionsFlow(config_entries.OptionsFlow):
         self._notification_destination = "home_assistant"
         self._notification_targets = []
         self._random_captions_enabled = False
+        self._relationship_captions_enabled = False
         self._configure_obedience = False
 
     async def async_step_init(self, user_input=None):
@@ -201,6 +203,7 @@ class ChastityCalendarOptionsFlow(config_entries.OptionsFlow):
         self._notification_destination = current.get(CONF_MONTHLY_NOTIFICATION_DESTINATION, "home_assistant")
         self._notification_targets = current.get(CONF_MONTHLY_NOTIFICATION_TARGETS, [])
         self._random_captions_enabled = current.get(CONF_RANDOM_CAPTIONS_ENABLED, False)
+        self._relationship_captions_enabled = current.get(CONF_RELATIONSHIP_CAPTIONS_ENABLED, False)
         if user_input is not None:
             try:
                 parsed = json.loads(user_input[CONF_EVENTS])
@@ -230,6 +233,7 @@ class ChastityCalendarOptionsFlow(config_entries.OptionsFlow):
                     CONF_MONTHLY_NOTIFICATION_DESTINATION: user_input.get(CONF_MONTHLY_NOTIFICATION_DESTINATION, "home_assistant"),
                     CONF_MONTHLY_NOTIFICATION_TARGETS: user_input.get(CONF_MONTHLY_NOTIFICATION_TARGETS, []),
                     CONF_RANDOM_CAPTIONS_ENABLED: bool(user_input.get(CONF_RANDOM_CAPTIONS_ENABLED, False)),
+                    CONF_RELATIONSHIP_CAPTIONS_ENABLED: bool(user_input.get(CONF_RELATIONSHIP_CAPTIONS_ENABLED, False)),
                     CONF_OBEDIENCE_ENABLED: self._configure_obedience,
                 }
                 for key in (CONF_OBEDIENCE_EXTENSION_ID, CONF_OBEDIENCE_SECRET, CONF_OBEDIENCE_DAILY_HABIT_ID, CONF_OBEDIENCE_YEARLY_HABIT_ID):
@@ -323,4 +327,5 @@ class ChastityCalendarOptionsFlow(config_entries.OptionsFlow):
             vol.Required(CONF_MONTHLY_NOTIFICATION_DESTINATION, default=values.get(CONF_MONTHLY_NOTIFICATION_DESTINATION, "home_assistant")): vol.In(NOTIFICATION_DESTINATIONS),
             vol.Optional(CONF_MONTHLY_NOTIFICATION_TARGETS, default=values.get(CONF_MONTHLY_NOTIFICATION_TARGETS, [])): selector.EntitySelector(selector.EntitySelectorConfig(domain="notify", multiple=True)),
             vol.Optional(CONF_RANDOM_CAPTIONS_ENABLED, default=values.get(CONF_RANDOM_CAPTIONS_ENABLED, False)): bool,
+            vol.Optional(CONF_RELATIONSHIP_CAPTIONS_ENABLED, default=values.get(CONF_RELATIONSHIP_CAPTIONS_ENABLED, False)): bool,
         })
