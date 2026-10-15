@@ -32,18 +32,23 @@
         }
       },
       "obedience": {
-        "title": "Configure Obedience",
-        "description": "Optional: connect the Obedience extension and choose the habits to increment. First grant the extension permission in Obedience, then enter its extension ID and per-user secret. Leave credentials blank to use Home Assistant-only points.",
+        "title": "Connect to Obedience",
+        "description": "Select Open external website to sign in to Obedience and authorize Chastity Calendar. You will return here automatically; your Obedience password is never entered into Home Assistant.",
+        "data": {}
+      },
+      "obedience_settings": {
+        "title": "Obedience habits",
+        "description": "Choose the optional Obedience habits to increment after authorization. Leave a habit ID blank to skip syncing that milestone.",
         "data": {
-          "obedience_extension_id": "Obedience extension ID",
-          "obedience_secret": "Obedience per-user extension secret",
           "obedience_daily_habit_id": "Daily-completion habit ID (optional)",
           "obedience_yearly_habit_id": "365-day milestone habit ID (optional)"
         }
       }
     },
     "abort": {
-      "single_instance_allowed": "Only one Chastity Calendar instance is supported."
+      "single_instance_allowed": "Only one Chastity Calendar instance is supported.",
+      "obedience_https_required": "Obedience sign-in requires a publicly reachable HTTPS Home Assistant URL. Configure Home Assistant's external URL or HTTPS reverse proxy, then try again.",
+      "obedience_authorization_failed": "Obedience authorization could not be verified. Please try again."
     }
   },
   "options": {
@@ -87,11 +92,14 @@
         }
       },
       "obedience": {
-        "title": "Configure Obedience",
-        "description": "Grant the extension access in Obedience before entering its extension ID and per-user secret. Choose the optional habit IDs you want Home Assistant to increment.",
+        "title": "Connect to Obedience",
+        "description": "Select Open external website to sign in to Obedience and authorize Chastity Calendar. You will return here automatically; your Obedience password is never entered into Home Assistant.",
+        "data": {}
+      },
+      "obedience_settings": {
+        "title": "Obedience habits",
+        "description": "Choose the optional Obedience habits to increment after authorization. Leave a habit ID blank to skip syncing that milestone.",
         "data": {
-          "obedience_extension_id": "Obedience extension ID",
-          "obedience_secret": "Obedience per-user extension secret",
           "obedience_daily_habit_id": "Daily-completion habit ID (optional)",
           "obedience_yearly_habit_id": "365-day milestone habit ID (optional)"
         }

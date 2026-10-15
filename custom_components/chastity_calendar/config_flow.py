@@ -2,6 +2,11 @@
 from __future__ import annotations
 
 import json
+import uuid
+from urllib.parse import urlencode, urlparse
+
+from aiohttp import web
+from homeassistant.components import webhook
 
 import voluptuous as vol
 from homeassistant import config_entries
@@ -29,6 +34,58 @@ from .const import (
     DEFAULT_EVENTS,
     DOMAIN,
 )
+
+
+async def _async_start_obedience_authorization(flow):
+    """Open Obedience's official extension authorization page."""
+    flow._obedience_extension_id = str(uuid.uuid4())
+    flow._obedience_webhook_id = webhook.async_generate_id()
+
+    async def handle_redirect(hass, webhook_id, request):
+        """Receive credentials returned by Obedience."""
+        params = request.query
+        returned_id = params.get("id", "")
+        secret = params.get("secret", "")
+        user_id = params.get("uid", "")
+        if returned_id != flow._obedience_extension_id or not secret or not user_id:
+            return web.Response(
+                status=400,
+                text="Obedience authorization failed. Return to Home Assistant and try again.",
+            )
+        result = await hass.config_entries.flow.async_configure(
+            flow.flow_id,
+            user_input={"id": returned_id, "secret": secret, "uid": user_id},
+        )
+        webhook.async_unregister(hass, webhook_id)
+        if result.get("type") != "external_step_done":
+            return web.Response(
+                status=400,
+                text="Home Assistant could not finish Obedience authorization. Return to Home Assistant.",
+            )
+        return web.Response(
+            text="<html><body><p>Obedience connected. You can close this tab and return to Home Assistant.</p><script>window.close()</script></body></html>",
+            content_type="text/html",
+        )
+
+    webhook.async_register(
+        flow.hass,
+        DOMAIN,
+        "Obedience authorization callback",
+        flow._obedience_webhook_id,
+        handle_redirect,
+        allowed_methods=["GET"],
+    )
+    redirect_url = webhook.async_generate_url(flow.hass, flow._obedience_webhook_id)
+    if urlparse(redirect_url).scheme != "https":
+        webhook.async_unregister(flow.hass, flow._obedience_webhook_id)
+        return flow.async_abort(reason="obedience_https_required")
+
+    authorization_url = "https://app.obedienceapp.com/home/extension-request?" + urlencode({
+        "id": flow._obedience_extension_id,
+        "name": "Chastity Calendar",
+        "redirect": redirect_url,
+    })
+    return flow.async_external_step(step_id="obedience", url=authorization_url)
 
 
 SERVICE_ORDER = ("emlalock", "chaster", "chastify")
@@ -112,18 +169,26 @@ class ChastityCalendarConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         }))
 
     async def async_step_obedience(self, user_input=None):
-        """Configure optional Obedience habit syncing on its own page."""
+        """Complete the external Obedience authorization step."""
+        if user_input is None:
+            return await _async_start_obedience_authorization(self)
+        if user_input.get("id") != self._obedience_extension_id:
+            return self.async_abort(reason="obedience_authorization_failed")
+        self._obedience_auth_result = user_input
+        return self.async_external_step_done(next_step_id="obedience_settings")
+
+    async def async_step_obedience_settings(self, user_input=None):
+        """Choose the Obedience habits after authorizing the account."""
         if user_input is not None:
             self._service_data.update({
-                CONF_OBEDIENCE_EXTENSION_ID: user_input.get(CONF_OBEDIENCE_EXTENSION_ID, "").strip(),
-                CONF_OBEDIENCE_SECRET: user_input.get(CONF_OBEDIENCE_SECRET, "").strip(),
+                CONF_OBEDIENCE_EXTENSION_ID: self._obedience_auth_result["id"],
+                CONF_OBEDIENCE_SECRET: self._obedience_auth_result["secret"],
                 CONF_OBEDIENCE_DAILY_HABIT_ID: user_input.get(CONF_OBEDIENCE_DAILY_HABIT_ID, "").strip(),
                 CONF_OBEDIENCE_YEARLY_HABIT_ID: user_input.get(CONF_OBEDIENCE_YEARLY_HABIT_ID, "").strip(),
+                "obedience_user_id": self._obedience_auth_result.get("uid", ""),
             })
             return self.async_create_entry(title="Chastity Calendar", data=self._service_data)
-        return self.async_show_form(step_id="obedience", data_schema=vol.Schema({
-            vol.Optional(CONF_OBEDIENCE_EXTENSION_ID, default=""): str,
-            vol.Optional(CONF_OBEDIENCE_SECRET, default=""): str,
+        return self.async_show_form(step_id="obedience_settings", data_schema=vol.Schema({
             vol.Optional(CONF_OBEDIENCE_DAILY_HABIT_ID, default=""): str,
             vol.Optional(CONF_OBEDIENCE_YEARLY_HABIT_ID, default=""): str,
         }))
@@ -239,18 +304,26 @@ class ChastityCalendarOptionsFlow(config_entries.OptionsFlow):
         }))
 
     async def async_step_obedience(self, user_input=None):
-        """Edit Obedience credentials separately from calendar options."""
+        """Complete external Obedience authorization for the options flow."""
+        if user_input is None:
+            return await _async_start_obedience_authorization(self)
+        if user_input.get("id") != self._obedience_extension_id:
+            return self.async_abort(reason="obedience_authorization_failed")
+        self._obedience_auth_result = user_input
+        return self.async_external_step_done(next_step_id="obedience_settings")
+
+    async def async_step_obedience_settings(self, user_input=None):
+        """Choose Obedience habits after authorization."""
         if user_input is not None:
             self._service_data.update({
-                CONF_OBEDIENCE_EXTENSION_ID: user_input.get(CONF_OBEDIENCE_EXTENSION_ID, "").strip(),
-                CONF_OBEDIENCE_SECRET: user_input.get(CONF_OBEDIENCE_SECRET, "").strip(),
+                CONF_OBEDIENCE_EXTENSION_ID: self._obedience_auth_result["id"],
+                CONF_OBEDIENCE_SECRET: self._obedience_auth_result["secret"],
                 CONF_OBEDIENCE_DAILY_HABIT_ID: user_input.get(CONF_OBEDIENCE_DAILY_HABIT_ID, "").strip(),
                 CONF_OBEDIENCE_YEARLY_HABIT_ID: user_input.get(CONF_OBEDIENCE_YEARLY_HABIT_ID, "").strip(),
+                "obedience_user_id": self._obedience_auth_result.get("uid", ""),
             })
             return self.async_create_entry(title="", data=self._service_data)
-        return self.async_show_form(step_id="obedience", data_schema=vol.Schema({
-            vol.Optional(CONF_OBEDIENCE_EXTENSION_ID, default=self._service_data.get(CONF_OBEDIENCE_EXTENSION_ID, "")): str,
-            vol.Optional(CONF_OBEDIENCE_SECRET, default=self._service_data.get(CONF_OBEDIENCE_SECRET, "")): str,
+        return self.async_show_form(step_id="obedience_settings", data_schema=vol.Schema({
             vol.Optional(CONF_OBEDIENCE_DAILY_HABIT_ID, default=self._service_data.get(CONF_OBEDIENCE_DAILY_HABIT_ID, "")): str,
             vol.Optional(CONF_OBEDIENCE_YEARLY_HABIT_ID, default=self._service_data.get(CONF_OBEDIENCE_YEARLY_HABIT_ID, "")): str,
         }))
