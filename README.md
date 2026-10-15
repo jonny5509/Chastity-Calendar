@@ -4,7 +4,7 @@ A Home Assistant custom integration with monthly theme events and optional daily
 
 ## Features
 - Native Home Assistant calendar entity for dashboards and automations.
-- Choose none, one, two, or all three services during setup; API credentials are optional and can be entered later.
+- Choose none, one, two, or all three services during setup. A separate credentials page is shown only for each selected service; credentials can be left blank and added later.
 - Adds one all-day calendar event per date with a single emoji, even when two or all three services have overlapping sessions.
 - Creates three Home Assistant binary sensors: EmlaLock active session, Chaster active session, and Chastify active session. Each sensor reports on/off after a successful API check and is unavailable until that service is selected, configured, and checked.
 - Saves history in Home Assistant's local storage. Existing records are append-only and remain after a session ends, a token is removed, or Home Assistant restarts.
@@ -18,7 +18,7 @@ A Home Assistant custom integration with monthly theme events and optional daily
 4. Go to **Settings → Devices & services → Add integration** and search for **Chastity Calendar**.
 
 ## Configure service tracking
-During initial setup, select none, one, or multiple services to track. You can change this selection later from the integration's **Configure** page. Enter credentials for each selected service; all services are optional:
+During initial setup, select none, one, or multiple services to track. Home Assistant then shows a separate configuration page for each selected service only. You can change the selection later from the integration's **Configure** page; the configuration flow again shows credential pages only for the selected services. Enter credentials for each selected service; all services are optional:
 - **EmlaLock:** user ID and API key.
 - **Chastify:** user-wide Developer API token with `locks:read` scope.
 - **Chaster:** Public API developer/access token with permission to read locks.
