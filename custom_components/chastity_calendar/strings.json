@@ -39,13 +39,17 @@
     "step": {
       "init": {
         "title": "Calendar and service connections",
-        "description": "Select the services to poll. Only selected services will show a separate credentials page. Home Assistant needs internet access to contact their APIs; the calendar and saved history remain local. Monthly theme reminders can appear in Home Assistant, on selected notify-enabled phones, or both.",
+        "description": "Select the services to poll. Only selected services will show a separate credentials page. Home Assistant needs internet access to contact their APIs; the calendar and saved history remain local. Monthly theme reminders can appear in Home Assistant, on selected notify-enabled phones, or both. Optional Obedience settings sync completed days to configured habits; leave them blank to track points only in Home Assistant.",
         "data": {
           "events": "Monthly events (JSON)",
           "services": "Services to track (select any combination, or none)",
           "poll_minutes": "Polling interval (minutes)",
           "monthly_notification_destination": "Monthly theme notification destination",
-          "monthly_notification_targets": "Phone notification targets (select one or multiple phones)"
+          "monthly_notification_targets": "Phone notification targets (select one or multiple phones)",
+          "obedience_extension_id": "Obedience extension ID",
+          "obedience_secret": "Obedience extension secret",
+          "obedience_daily_habit_id": "Obedience daily-completion habit ID",
+          "obedience_yearly_habit_id": "Obedience yearly-bonus habit ID"
         }
       },
       "emlalock": {
