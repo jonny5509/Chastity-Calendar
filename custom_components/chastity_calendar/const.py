@@ -1,6 +1,8 @@
 """Constants for Chastity Calendar."""
 DOMAIN = "chastity_calendar"
 CONF_EVENTS = "events"
+CONF_SERVICES = "services"
+SERVICE_OPTIONS = {"emlalock": "EmlaLock", "chaster": "Chaster", "chastify": "Chastify"}
 CONF_EMLALOCK_USER_ID = "emlalock_user_id"
 CONF_EMLALOCK_API_TOKEN = "emlalock_api_token"
 CONF_CHASTIFY_DEV_TOKEN = "chastify_dev_token"

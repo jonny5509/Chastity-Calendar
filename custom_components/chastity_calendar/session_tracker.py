@@ -18,6 +18,7 @@ from .const import (
     CONF_EMLALOCK_API_TOKEN,
     CONF_EMLALOCK_USER_ID,
     CONF_POLL_MINUTES,
+    CONF_SERVICES,
     DOMAIN,
     EMOJIS,
 )
@@ -34,6 +35,8 @@ class SessionHistory:
         self.entry = entry
         self.store = Store(hass, STORAGE_VERSION, f"{DOMAIN}_{entry.entry_id}_history")
         self.history: dict[str, dict[str, Any]] = {}
+        # None means no successful status check yet; True/False means active/inactive.
+        self.active_sessions: dict[str, bool] = {}
         self._unsub = None
         self._session: aiohttp.ClientSession | None = None
 
@@ -74,6 +77,7 @@ class SessionHistory:
         """Mark days from active sessions; preserve all previously recorded days."""
         options = self.entry.options
         today = dt_util.now().date()
+        enabled_services = set(options.get(CONF_SERVICES, self.entry.data.get(CONF_SERVICES, [])))
         additions: dict[str, dict[str, Any]] = {}
         # Keep one emoji per service/session so backfilled days look consistent.
         session_emojis = self.history.setdefault("_session_emojis", {})
@@ -98,17 +102,27 @@ class SessionHistory:
                     record["start_times"].add(f"{service}: {start_time}")
                 day += timedelta(days=1)
 
+        status_changed = False
+
+        def set_status(service: str, active: bool) -> None:
+            nonlocal status_changed
+            if self.active_sessions.get(service) != active:
+                self.active_sessions[service] = active
+                status_changed = True
+
         # EmlaLock: status 1 is an active session; timestamps are Unix seconds.
         user_id = options.get(CONF_EMLALOCK_USER_ID)
         emla_token = options.get(CONF_EMLALOCK_API_TOKEN)
-        if user_id and emla_token:
+        if "emlalock" in enabled_services and user_id and emla_token:
             try:
                 payload = await self._get_json(
                     "https://api.emlalock.com/info",
                     params={"userid": user_id, "apikey": emla_token},
                 )
                 session = (payload or {}).get("chastitysession") or {}
-                if int(session.get("status", 0)) == 1:
+                active = int(session.get("status", 0)) == 1
+                set_status("emlalock", active)
+                if active:
                     stamp = session.get("startdate") or session.get("created")
                     start = self._parse_date(stamp) or today
                     await add_span(
@@ -120,13 +134,14 @@ class SessionHistory:
 
         # Chastify's user-wide developer token exposes the current session endpoint.
         chastify_token = options.get(CONF_CHASTIFY_DEV_TOKEN)
-        if chastify_token:
+        if "chastify" in enabled_services and chastify_token:
             try:
                 payload = await self._get_json(
                     "https://chastify.net/api/apps/v1/session",
                     headers={"Authorization": f"Bearer {chastify_token}"},
                 )
                 lock = (payload or {}).get("lock") or {}
+                set_status("chastify", bool(lock))
                 if lock:
                     stamp = lock.get("startDate") or lock.get("startedAt") or lock.get("createdAt")
                     start = self._parse_date(stamp) or today
@@ -139,29 +154,33 @@ class SessionHistory:
 
         # Chaster's public API returns the user's locks; only active, non-archived locks count.
         chaster_token = options.get(CONF_CHASTER_API_TOKEN)
-        if chaster_token:
+        if "chaster" in enabled_services and chaster_token:
             try:
                 payload = await self._get_json(
                     "https://api.chaster.app/locks",
                     headers={"Authorization": f"Bearer {chaster_token}"},
                 )
                 locks = payload if isinstance(payload, list) else (payload or {}).get("items", [])
+                active_locks = []
                 for lock in locks or []:
                     if not isinstance(lock, dict):
                         continue
                     status = str(lock.get("status", "")).lower()
                     active = lock.get("active") is True or status in {"active", "running", "ongoing"}
                     if active and not lock.get("archived", False):
-                        stamp = lock.get("startDate") or lock.get("startedAt") or lock.get("createdAt")
-                        start = self._parse_date(stamp) or today
-                        await add_span(
-                            "Chaster", start, str(lock.get("id") or stamp or start.isoformat()),
-                            self._format_start_time(stamp),
-                        )
+                        active_locks.append(lock)
+                set_status("chaster", bool(active_locks))
+                for lock in active_locks:
+                    stamp = lock.get("startDate") or lock.get("startedAt") or lock.get("createdAt")
+                    start = self._parse_date(stamp) or today
+                    await add_span(
+                        "Chaster", start, str(lock.get("id") or stamp or start.isoformat()),
+                        self._format_start_time(stamp),
+                    )
             except (aiohttp.ClientError, ValueError, TypeError, KeyError) as err:
                 _LOGGER.warning("Unable to refresh Chaster session status (%s)", type(err).__name__)
 
-        changed = False
+        changed = status_changed
         for day, incoming in additions.items():
             record = self.history.setdefault(day, {"emoji": incoming["emoji"], "services": []})
             if "emoji" not in record:
