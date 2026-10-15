@@ -13,10 +13,14 @@
   "options": {
     "step": {
       "init": {
-        "title": "Monthly themes",
-        "description": "Edit the JSON list. Each item needs month (1-12) and title; description is optional.",
+        "title": "Calendar, services and reminders",
+        "description": "Edit monthly themes, select services to track, and configure the monthly reminder destination and phone notification targets.",
         "data": {
-          "events": "Monthly events (JSON)"
+          "events": "Monthly events (JSON)",
+          "services": "Services to track (select any combination, or none)",
+          "poll_minutes": "Polling interval (minutes)",
+          "monthly_notification_destination": "Monthly theme notification destination",
+          "monthly_notification_targets": "Phone notification targets (select one or multiple phones)"
         }
       }
     },

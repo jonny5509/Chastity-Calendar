@@ -8,6 +8,13 @@ CONF_EMLALOCK_API_TOKEN = "emlalock_api_token"
 CONF_CHASTIFY_DEV_TOKEN = "chastify_dev_token"
 CONF_CHASTER_API_TOKEN = "chaster_api_token"
 CONF_POLL_MINUTES = "poll_minutes"
+CONF_MONTHLY_NOTIFICATION_DESTINATION = "monthly_notification_destination"
+CONF_MONTHLY_NOTIFICATION_TARGETS = "monthly_notification_targets"
+NOTIFICATION_DESTINATIONS = {
+    "home_assistant": "Home Assistant",
+    "phone": "Phone notification(s)",
+    "both": "Home Assistant and phone",
+}
 EMOJIS = ("👑", "💅", "👠", "💄", "✨", "🎀")
 DEFAULT_EVENTS = [
     {"month": 1, "title": "Jailbird January", "description": "Community-themed chastity challenge. Set your own optional, consensual goals."},

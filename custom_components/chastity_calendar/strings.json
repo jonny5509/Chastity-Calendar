@@ -39,11 +39,13 @@
     "step": {
       "init": {
         "title": "Calendar and service connections",
-        "description": "Select the services to poll. Only selected services will show a separate credentials page. Home Assistant needs internet access to contact their APIs; the calendar and saved history remain local.",
+        "description": "Select the services to poll. Only selected services will show a separate credentials page. Home Assistant needs internet access to contact their APIs; the calendar and saved history remain local. Monthly theme reminders can appear in Home Assistant, on selected notify-enabled phones, or both.",
         "data": {
           "events": "Monthly events (JSON)",
           "services": "Services to track (select any combination, or none)",
-          "poll_minutes": "Polling interval (minutes)"
+          "poll_minutes": "Polling interval (minutes)",
+          "monthly_notification_destination": "Monthly theme notification destination",
+          "monthly_notification_targets": "Phone notification targets (select one or multiple phones)"
         }
       },
       "emlalock": {
