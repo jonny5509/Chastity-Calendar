@@ -19,7 +19,7 @@ class ChastityCalendarConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if self._async_current_entries():
             return self.async_abort(reason="single_instance_allowed")
         if user_input is not None:
-            return self.async_create_entry(title="Chastity Calendar", data={CONF_EVENTS: DEFAULT_EVENTS, CONF_SERVICES: user_input[CONF_SERVICES]})
+            return self.async_create_entry(title="Chastity Calendar", data={CONF_EVENTS: DEFAULT_EVENTS, CONF_SERVICES: sorted(user_input[CONF_SERVICES])})
         return self.async_show_form(step_id="user", data_schema=vol.Schema({vol.Required(CONF_SERVICES, default=[]): cv.multi_select(SERVICE_OPTIONS)}))
 
     @staticmethod
@@ -33,7 +33,7 @@ class ChastityCalendarOptionsFlow(config_entries.OptionsFlow):
         self._config_entry = config_entry
 
     async def async_step_init(self, user_input=None):
-        current = self._config_entry.options
+        current = {**self._config_entry.data, **self._config_entry.options}
         events = current.get(CONF_EVENTS, self._config_entry.data.get(CONF_EVENTS, DEFAULT_EVENTS))
         if user_input is not None:
             try:
@@ -51,7 +51,7 @@ class ChastityCalendarOptionsFlow(config_entries.OptionsFlow):
                     event["month"] = month
                     event["title"] = str(event["title"]).strip()
                     event["description"] = str(event.get("description", ""))
-                data = {CONF_EVENTS: parsed, CONF_SERVICES: user_input.get(CONF_SERVICES, [])}
+                data = {CONF_EVENTS: parsed, CONF_SERVICES: sorted(user_input.get(CONF_SERVICES, []))}
                 for key in (CONF_EMLALOCK_USER_ID, CONF_EMLALOCK_API_TOKEN, CONF_CHASTIFY_DEV_TOKEN, CONF_CHASTER_API_TOKEN):
                     data[key] = user_input.get(key, "").strip()
                 data[CONF_POLL_MINUTES] = int(user_input[CONF_POLL_MINUTES])
