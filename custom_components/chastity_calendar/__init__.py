@@ -5,7 +5,7 @@ from homeassistant.const import Platform
 from .const import DOMAIN
 from .session_tracker import SessionHistory
 
-PLATFORMS = [Platform.CALENDAR]
+PLATFORMS = [Platform.CALENDAR, Platform.BINARY_SENSOR]
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up calendar and persistent session history."""
