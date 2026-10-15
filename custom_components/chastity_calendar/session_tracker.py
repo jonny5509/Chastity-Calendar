@@ -292,51 +292,81 @@ class SessionHistory:
 
     @callback
     def events_between(self, start: date, end: date) -> list[dict[str, Any]]:
-        """Return daily activity and a separate calendar event for each session start."""
-        result = []
+        """Return one daily calendar event per tracked service/session."""
+        result: list[dict[str, Any]] = []
+        sessions_by_service: dict[str, list[tuple[str, dict[str, Any], date]]] = {}
+        for session_key, session in self.history.get("_sessions", {}).items():
+            try:
+                session_start = date.fromisoformat(session["start"])
+            except (KeyError, TypeError, ValueError):
+                continue
+            service = str(session.get("service", session_key.split(":", 1)[0]))
+            sessions_by_service.setdefault(service, []).append(
+                (session_key, session, session_start)
+            )
+
         for day, record in sorted(self.history.items()):
             try:
                 event_date = date.fromisoformat(day)
-            except ValueError:
+            except (TypeError, ValueError):
+                # Metadata buckets such as _sessions and _session_emojis are not dates.
                 continue
-            if start <= event_date < end:
-                services = ", ".join(record.get("services", []))
-                start_times = ", ".join(record.get("start_times", []))
+            if not start <= event_date < end:
+                continue
+
+            services = record.get("services", [])
+            matched_sessions: list[tuple[str, dict[str, Any], date]] = []
+            for service in services:
+                candidates = [
+                    item for item in sessions_by_service.get(str(service), [])
+                    if item[2] <= event_date
+                ]
+                if candidates:
+                    # A service can have multiple tracked sessions; preserve each
+                    # distinct session rather than combining them into one summary.
+                    matched_sessions.extend(candidates)
+
+            if matched_sessions:
+                seen: set[str] = set()
+                for session_key, session, session_start in matched_sessions:
+                    if session_key in seen:
+                        continue
+                    seen.add(session_key)
+                    service = str(session.get("service", session_key.split(":", 1)[0]))
+                    emoji = str(session.get("emoji", "✨"))
+                    start_time = session.get("start_time")
+                    summary = f"{emoji} {service} — Active session"
+                    if event_date == session_start:
+                        summary += " — started"
+                        if start_time:
+                            summary += f" {start_time}"
+                    description = (
+                        f"Session history for {service}. "
+                        f"Session start date: {session_start.isoformat()}."
+                    )
+                    if start_time:
+                        description += f" Local start time: {start_time}."
+                    result.append({
+                        "start": event_date,
+                        "end": event_date + timedelta(days=1),
+                        "summary": summary,
+                        "description": description,
+                    })
+            else:
+                # Keep old saved records visible when they predate per-session metadata.
                 emojis = record.get("emojis") or [record.get("emoji", "✨")]
-                summary = f"{' '.join(emojis)} Active session"
+                service_text = ", ".join(str(service) for service in services) or "Unknown service"
+                start_times = ", ".join(record.get("start_times", []))
+                summary = f"{' '.join(emojis)} Active session — {service_text}"
                 if start_times:
-                    summary = f"{summary} — started {start_times}"
-                description = f"Active session detected: {services}. This calendar record is permanent."
-                if start_times:
-                    description += f" Session start time(s): {start_times} (local time)."
+                    summary += f" — started {start_times}"
                 result.append({
                     "start": event_date,
                     "end": event_date + timedelta(days=1),
                     "summary": summary,
-                    "description": description,
+                    "description": (
+                        f"Legacy active-session history for {service_text}. "
+                        "This saved calendar record is retained for compatibility."
+                    ),
                 })
-        # Keep each session start visible as its own event instead of merging all
-        # starts on a day into the generic daily activity entry.
-        for session_key, session in self.history.get("_sessions", {}).items():
-            try:
-                event_date = date.fromisoformat(session["start"])
-            except (KeyError, TypeError, ValueError):
-                continue
-            if not start <= event_date < end:
-                continue
-            service = str(session.get("service", session_key.split(":", 1)[0]))
-            emoji = str(session.get("emoji", "✨"))
-            start_time = session.get("start_time")
-            summary = f"{emoji} {service} — Session started"
-            if start_time:
-                summary += f" at {start_time}"
-            description = f"Individual session start for {service}. Start date: {event_date.isoformat()}."
-            if start_time:
-                description += f" Local start time: {start_time}."
-            result.append({
-                "start": event_date,
-                "end": event_date + timedelta(days=1),
-                "summary": summary,
-                "description": description,
-            })
-        return result
+        return sorted(result, key=lambda item: (item["start"], item["summary"]))
