@@ -4,8 +4,14 @@
   "version": "1.0.0",
   "documentation": "https://github.com/jonny5509/calendar",
   "issue_tracker": "https://github.com/jonny5509/calendar/issues",
-  "codeowners": ["@jonny5509"],
+  "codeowners": [
+    "@jonny5509"
+  ],
   "config_flow": true,
   "integration_type": "service",
-  "iot_class": "cloud_polling"
+  "iot_class": "cloud_polling",
+  "after_dependencies": [
+    "cloud",
+    "http"
+  ]
 }
