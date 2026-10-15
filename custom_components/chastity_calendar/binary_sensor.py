@@ -8,6 +8,11 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import (
     CONF_CHASTER_API_TOKEN,
+    CONF_OBEDIENCE_DAILY_HABIT_ID,
+    CONF_OBEDIENCE_ENABLED,
+    CONF_OBEDIENCE_EXTENSION_ID,
+    CONF_OBEDIENCE_SECRET,
+    CONF_OBEDIENCE_YEARLY_HABIT_ID,
     CONF_CHASTIFY_DEV_TOKEN,
     CONF_EMLALOCK_API_TOKEN,
     CONF_EMLALOCK_USER_ID,
@@ -35,9 +40,14 @@ async def async_setup_entry(
         CONF_SERVICES, entry.data.get(CONF_SERVICES, [])
     )
     async_add_entities(
-        ServiceActiveSessionSensor(hass, entry, history, service)
-        for service in SERVICE_OPTIONS
-        if service in selected_services
+        [
+            *(
+                ServiceActiveSessionSensor(hass, entry, history, service)
+                for service in SERVICE_OPTIONS
+                if service in selected_services
+            ),
+            ObedienceConnectionStatusSensor(entry),
+        ]
     )
 
 
@@ -88,3 +98,39 @@ class ServiceActiveSessionSensor(BinarySensorEntity):
     async def _handle_update(self, event) -> None:
         if event.data.get("entry_id") == self._entry.entry_id:
             self.async_write_ha_state()
+
+
+class ObedienceConnectionStatusSensor(BinarySensorEntity):
+    """Show whether Obedience authorization is configured in Home Assistant."""
+
+    _attr_has_entity_name = True
+    _attr_name = "Obedience authorization"
+    _attr_unique_id = "obedience_authorization_status"
+    _attr_icon = "mdi:cloud-check"
+
+    def __init__(self, entry: ConfigEntry) -> None:
+        self._entry = entry
+
+    @property
+    def is_on(self) -> bool:
+        """Return true when syncing is enabled and authorization credentials exist."""
+        options = {**self._entry.data, **self._entry.options}
+        enabled = options.get(
+            CONF_OBEDIENCE_ENABLED,
+            bool(options.get(CONF_OBEDIENCE_EXTENSION_ID) and options.get(CONF_OBEDIENCE_SECRET)),
+        )
+        return bool(
+            enabled
+            and options.get(CONF_OBEDIENCE_EXTENSION_ID)
+            and options.get(CONF_OBEDIENCE_SECRET)
+        )
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        """Expose configuration details without revealing the secret."""
+        options = {**self._entry.data, **self._entry.options}
+        return {
+            "status_meaning": "Authorization credentials are saved; this does not test live API reachability.",
+            "daily_habit_configured": bool(options.get(CONF_OBEDIENCE_DAILY_HABIT_ID)),
+            "yearly_habit_configured": bool(options.get(CONF_OBEDIENCE_YEARLY_HABIT_ID)),
+        }
