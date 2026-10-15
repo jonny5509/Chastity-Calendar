@@ -75,7 +75,9 @@ async def _async_start_obedience_authorization(flow):
         handle_redirect,
         allowed_methods=["GET"],
     )
-    redirect_url = webhook.async_generate_url(flow.hass, flow._obedience_webhook_id)
+    redirect_url = webhook.async_generate_url(
+        flow.hass, flow._obedience_webhook_id, prefer_external=True
+    )
     if urlparse(redirect_url).scheme != "https":
         webhook.async_unregister(flow.hass, flow._obedience_webhook_id)
         return flow.async_abort(reason="obedience_https_required")
