@@ -15,6 +15,7 @@ A Home Assistant custom integration with monthly theme events and optional daily
 - Editable monthly theme list.
 - Monthly theme reminder on the first day of each month, using a message such as “Are you ready for No Nut November?”
 - Choose a Home Assistant persistent notification, one or more phone notification targets, or both.
+- Optional daily completion points: 100 points per completed date and a one-time 1,095-point bonus after 365 completed dates.
 
 ## Install with HACS
 1. In HACS, open **Integrations** → menu → **Custom repositories**.
@@ -34,6 +35,20 @@ Internet access: yes — Home Assistant needs outbound internet access to call t
 The monthly event list is editable as JSON. Each item needs a month number and title; description is optional. Months use numbers 1–12. Monthly events are all-day and end at the first day of the following month (exclusive).
 
 The integration can send a reminder at the start of each month, using that month's configured theme title (for example, “Are you ready for No Nut November?”). In **Settings → Devices & services → Chastity Calendar → Configure**, choose a Home Assistant persistent notification, phone notification(s), or both. For phone notifications, select one or more `notify` entities, such as the entities provided by the Home Assistant Companion App. The reminder is sent once per month and the last-sent month is stored locally.
+
+## Daily completion points and optional Obedience sync
+
+Call the `chastity_calendar.mark_day_complete` Home Assistant service when a day is completed. The optional `date` field accepts a date such as `2026-10-15`; if omitted, the current Home Assistant local date is used. A date can only be counted once. The `sensor.chastity_calendar_completion_points` sensor reports the total points and completion details. The yearly bonus is awarded after 365 completed dates in total (not necessarily consecutive).
+
+Obedience is optional. In **Settings → Devices & services → Chastity Calendar → Configure**, provide an Obedience extension ID and secret, then optionally the IDs of two eligible habits: one for daily completion and one for the yearly milestone. The integration increments the daily habit once per newly completed date and the yearly habit once when the 365-date milestone is reached. Configure those habits in Obedience with the point rewards you want (100 and 1,095 respectively). The Obedience API does not document a direct arbitrary-points endpoint, so the integration increments eligible habits rather than directly writing a points balance. Obedience may reject habits that require photo proof or that the account is not permitted to edit. Grant the extension access through Obedience's extension permission flow first, then copy its extension ID and per-user secret into these fields. Home Assistant never asks for the Obedience account password. Leave the Obedience fields blank to use Home Assistant-only points tracking.
+
+Example service call:
+
+```yaml
+action: chastity_calendar.mark_day_complete
+data:
+  date: "2026-10-15"
+```
 
 ## Notes
 API response formats and scopes can change. Check Home Assistant logs if a service token is rejected. The integration does not control locks or change session state; it only reads session status and stores calendar history.

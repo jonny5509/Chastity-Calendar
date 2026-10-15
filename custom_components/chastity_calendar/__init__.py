@@ -7,6 +7,8 @@ from datetime import datetime
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.const import Platform
+import voluptuous as vol
+from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.event import async_track_time_change
 from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
@@ -18,8 +20,9 @@ from .const import (
     DEFAULT_EVENTS,
     DOMAIN,
 )
+from .obedience_points import ObediencePoints
 
-PLATFORMS = [Platform.CALENDAR, Platform.BINARY_SENSOR]
+PLATFORMS = [Platform.CALENDAR, Platform.BINARY_SENSOR, Platform.SENSOR]
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -28,11 +31,27 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     from .session_tracker import SessionHistory
 
     history = SessionHistory(hass, entry)
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = history
+    points = ObediencePoints(hass, entry)
+    await points.async_load()
+    domain_data = hass.data.setdefault(DOMAIN, {})
+    domain_data[entry.entry_id] = history
+    domain_data.setdefault("points", {})[entry.entry_id] = points
     await history.async_start()
     entry.async_on_unload(entry.add_update_listener(_async_options_updated))
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     await _async_setup_monthly_notification(hass, entry)
+    if not hass.services.has_service(DOMAIN, "mark_day_complete"):
+        async def mark_day_complete(call):
+            """Record a completed day for each configured integration entry."""
+            for point_tracker in hass.data.get(DOMAIN, {}).get("points", {}).values():
+                await point_tracker.async_mark_complete(call)
+
+        hass.services.async_register(
+            DOMAIN,
+            "mark_day_complete",
+            mark_day_complete,
+            schema=vol.Schema({vol.Optional("date"): cv.date}),
+        )
     return True
 
 
@@ -125,7 +144,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload platforms and stop polling; history remains in HA storage."""
     if not await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
         return False
-    history = hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
+    domain_data = hass.data.get(DOMAIN, {})
+    history = domain_data.pop(entry.entry_id, None)
+    domain_data.get("points", {}).pop(entry.entry_id, None)
     if history:
         await history.async_stop()
     return True
