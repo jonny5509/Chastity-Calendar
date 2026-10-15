@@ -95,8 +95,9 @@ class SessionHistory:
             day = start
             while day <= today:
                 record = additions.setdefault(
-                    day.isoformat(), {"emoji": emoji, "services": set(), "start_times": set()}
+                    day.isoformat(), {"emojis": set(), "services": set(), "start_times": set()}
                 )
+                record["emojis"].add(emoji)
                 record["services"].add(service)
                 if start_time:
                     record["start_times"].add(f"{service}: {start_time}")
@@ -182,9 +183,14 @@ class SessionHistory:
 
         changed = status_changed
         for day, incoming in additions.items():
-            record = self.history.setdefault(day, {"emoji": incoming["emoji"], "services": []})
-            if "emoji" not in record:
-                record["emoji"] = incoming["emoji"]
+            record = self.history.setdefault(day, {"emoji": next(iter(incoming["emojis"]), "✨"), "services": []})
+            existing_emojis = set(record.get("emojis", []))
+            # Migrate the legacy single-emoji field when new session data arrives.
+            if not existing_emojis and record.get("emoji"):
+                existing_emojis.add(record["emoji"])
+            merged_emojis = sorted(existing_emojis | incoming.get("emojis", set()))
+            if merged_emojis != record.get("emojis", []):
+                record["emojis"] = merged_emojis
                 changed = True
             existing = set(record.get("services", []))
             merged = sorted(existing | incoming["services"])
@@ -255,7 +261,8 @@ class SessionHistory:
             if start <= event_date < end:
                 services = ", ".join(record.get("services", []))
                 start_times = ", ".join(record.get("start_times", []))
-                summary = f"{record.get('emoji', '✨')} Active session"
+                emojis = record.get("emojis") or [record.get("emoji", "✨")]
+                summary = f"{' '.join(emojis)} Active session"
                 if start_times:
                     summary = f"{summary} — started {start_times}"
                 description = f"Active session detected: {services}. This calendar record is permanent."
