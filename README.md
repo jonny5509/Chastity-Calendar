@@ -28,6 +28,41 @@ During initial setup, select none, one, or multiple services to track. Home Assi
 
 Internet access: yes — Home Assistant needs outbound internet access to call the selected services' APIs and poll session status. The calendar entity and saved history are stored locally in Home Assistant, but live service tracking and API-based historical backfill will not work while Home Assistant cannot reach those services. Credentials are stored in the Home Assistant config entry, sent only to the respective service, and are not written to the repository or included in logs. Never share your tokens. If a token is revoked or a service is unavailable, already-saved calendar history is retained. Polling detects sessions while the integration is running; historical days before setup can only be recovered if an API exposes them.
 
+## Set up each service
+
+Create or enable the relevant API credentials in each provider account before entering them in Home Assistant. Website menu names can change, so if a label has moved, check the provider's current account or developer documentation. Chastity Calendar only reads session status; it does not create, unlock, or change sessions.
+
+### EmlaLock
+
+1. Sign in to your EmlaLock account.
+2. Find the account/API settings that provide your **user ID** and **API key**. Use your API key, not your account password.
+3. During Chastity Calendar setup, select **EmlaLock**. On its dedicated credentials page, enter both the user ID and API key.
+4. Submit the flow. If the EmlaLock sensor remains unavailable, check Home Assistant logs and confirm the credentials are active.
+
+### Chaster
+
+1. Sign in to Chaster and open its developer/API area.
+2. Create or copy a **Developer Token** with permission to read your session/lock data.
+3. Select **Chaster** in Chastity Calendar and paste the token into its dedicated credentials page. The integration sends this token as a Bearer token.
+4. Keep the token private. If access is denied, check that it is active and has the required read access.
+
+### Chastify
+
+1. Sign in to Chastify and open its developer/API settings.
+2. Create or copy your **user-wide Developer API key** and ensure it includes the `locks:read` scope.
+3. Select **Chastify** in the Chastity Calendar setup flow and paste the key into its dedicated credentials page.
+4. If API checks fail, verify that the key belongs to your user account, has the required scope, and has not been revoked.
+
+### Obedience
+
+1. During initial setup, tick **Configure Obedience habit syncing**. For an existing integration, open **Settings → Devices & services → Chastity Calendar → Configure**, enable **Obedience habit syncing**, and submit. The next page is the separate Obedience setup page.
+2. In Obedience, grant access through its extension permission flow before copying credentials.
+3. Copy the **extension ID** and **per-user extension secret** from Obedience into the matching Home Assistant fields. Never enter your Obedience account password.
+4. Optionally enter the ID of an eligible daily-completion habit and/or a 365-day milestone habit. The integration increments each configured habit when the relevant milestone is reached; configure the habit rewards in Obedience itself.
+5. Leave habit IDs blank if you only want local Home Assistant points, or disable Obedience syncing to stop API updates.
+
+For every service, enter credentials only into that service's matching field. Do not include API keys, tokens, or extension secrets in screenshots, issue reports, or logs. If a provider changes its API or credential flow, follow that provider's latest developer documentation.
+
 ## Monthly themes and reminders
 The monthly event list is editable as JSON. Each item needs a month number and title; description is optional. Months use numbers 1–12. Monthly events are all-day and end at the first day of the following month (exclusive).
 
@@ -37,7 +72,7 @@ The integration can send a reminder at the start of each month, using that month
 
 Call the `chastity_calendar.mark_day_complete` Home Assistant service when a day is completed. The optional `date` field accepts a date such as `2026-10-15`; if omitted, the current Home Assistant local date is used. A date can only be counted once. The `sensor.chastity_calendar_completion_points` sensor reports the total points and completion details. The yearly bonus is awarded after 365 completed dates in total (not necessarily consecutive).
 
-Obedience is optional. In **Settings → Devices & services → Chastity Calendar → Configure**, provide an Obedience extension ID and secret, then optionally the IDs of two eligible habits: one for daily completion and one for the yearly milestone. The integration increments the daily habit once per newly completed date and the yearly habit once when the 365-date milestone is reached. Configure those habits in Obedience with the point rewards you want (100 and 1,095 respectively). The Obedience API does not document a direct arbitrary-points endpoint, so the integration increments eligible habits rather than directly writing a points balance. Obedience may reject habits that require photo proof or that the account is not permitted to edit. Grant the extension access through Obedience's extension permission flow first, then copy its extension ID and per-user secret into these fields. Home Assistant never asks for the Obedience account password. Leave the Obedience fields blank to use Home Assistant-only points tracking.
+Obedience is optional and has its own setup page. During first-time setup, enable **Configure Obedience habit syncing** to open that page. Later, open **Settings → Devices & services → Chastity Calendar → Configure**, enable Obedience syncing, and submit to open the separate page. In Obedience, grant the extension access through its extension permission flow, then copy the extension ID and per-user secret into Home Assistant. Do not enter your Obedience account password. Create or choose eligible habits and copy their IDs: one for daily completion and optionally one for the 365-day milestone. Set the rewards on those habits in Obedience itself. Home Assistant's local tracker awards 100 points per completed date and a one-time 1,095-point bonus after 365 completed dates; the integration increments the configured Obedience habits rather than directly writing a points balance. Habits requiring photo proof or habits your account cannot edit may be rejected. You can leave either habit ID blank, or disable Obedience syncing, to keep points local to Home Assistant.
 
 Example service call:
 
