@@ -16,6 +16,10 @@ from .const import (
     CONF_EMLALOCK_USER_ID,
     CONF_EVENTS,
     CONF_POLL_MINUTES,
+    CONF_OBEDIENCE_EXTENSION_ID,
+    CONF_OBEDIENCE_SECRET,
+    CONF_OBEDIENCE_DAILY_HABIT_ID,
+    CONF_OBEDIENCE_YEARLY_HABIT_ID,
     CONF_MONTHLY_NOTIFICATION_DESTINATION,
     CONF_MONTHLY_NOTIFICATION_TARGETS,
     NOTIFICATION_DESTINATIONS,
@@ -151,6 +155,10 @@ class ChastityCalendarOptionsFlow(config_entries.OptionsFlow):
                     CONF_POLL_MINUTES: int(user_input[CONF_POLL_MINUTES]),
                     CONF_MONTHLY_NOTIFICATION_DESTINATION: user_input.get(CONF_MONTHLY_NOTIFICATION_DESTINATION, "home_assistant"),
                     CONF_MONTHLY_NOTIFICATION_TARGETS: user_input.get(CONF_MONTHLY_NOTIFICATION_TARGETS, []),
+                    CONF_OBEDIENCE_EXTENSION_ID: user_input.get(CONF_OBEDIENCE_EXTENSION_ID, "").strip(),
+                    CONF_OBEDIENCE_SECRET: user_input.get(CONF_OBEDIENCE_SECRET, "").strip(),
+                    CONF_OBEDIENCE_DAILY_HABIT_ID: user_input.get(CONF_OBEDIENCE_DAILY_HABIT_ID, "").strip(),
+                    CONF_OBEDIENCE_YEARLY_HABIT_ID: user_input.get(CONF_OBEDIENCE_YEARLY_HABIT_ID, "").strip(),
                 }
                 # Preserve credentials for services that remain selected until their
                 # dedicated page is submitted, while dropping credentials for deselected services.
@@ -212,4 +220,8 @@ class ChastityCalendarOptionsFlow(config_entries.OptionsFlow):
             vol.Required(CONF_POLL_MINUTES, default=values.get(CONF_POLL_MINUTES, 5)): vol.All(int, vol.Range(min=1, max=60)),
             vol.Required(CONF_MONTHLY_NOTIFICATION_DESTINATION, default=values.get(CONF_MONTHLY_NOTIFICATION_DESTINATION, "home_assistant")): vol.In(NOTIFICATION_DESTINATIONS),
             vol.Optional(CONF_MONTHLY_NOTIFICATION_TARGETS, default=values.get(CONF_MONTHLY_NOTIFICATION_TARGETS, [])): selector.EntitySelector(selector.EntitySelectorConfig(domain="notify", multiple=True)),
+            vol.Optional(CONF_OBEDIENCE_EXTENSION_ID, default=values.get(CONF_OBEDIENCE_EXTENSION_ID, "")): str,
+            vol.Optional(CONF_OBEDIENCE_SECRET, default=values.get(CONF_OBEDIENCE_SECRET, "")): str,
+            vol.Optional(CONF_OBEDIENCE_DAILY_HABIT_ID, default=values.get(CONF_OBEDIENCE_DAILY_HABIT_ID, "")): str,
+            vol.Optional(CONF_OBEDIENCE_YEARLY_HABIT_ID, default=values.get(CONF_OBEDIENCE_YEARLY_HABIT_ID, "")): str,
         })
