@@ -59,7 +59,7 @@ Create or enable the relevant API credentials in each provider account before en
 2. Choose **Open external website**. Home Assistant opens Obedience's official authorization page.
 3. Sign in to Obedience and approve the extension request. Obedience redirects back to Home Assistant, which saves the extension credentials automatically. You never enter your Obedience password into Home Assistant or copy the extension secret manually.
 4. Optionally enter the ID of an eligible daily-completion habit and/or a 365-day milestone habit. The integration increments each configured habit when the relevant milestone is reached; configure the habit rewards in Obedience itself.
-5. This requires a publicly reachable HTTPS Home Assistant URL. Leave habit IDs blank if you only want local Home Assistant points, or disable Obedience syncing to stop API updates.
+5. This requires an HTTPS Home Assistant URL configured in Home Assistant, or Home Assistant Cloud Remote UI enabled. Leave habit IDs blank if you only want local Home Assistant points, or disable Obedience syncing to stop API updates.
 
 For every service, enter credentials only into that service's matching field. Do not include API keys, tokens, or extension secrets in screenshots, issue reports, or logs. If a provider changes its API or credential flow, follow that provider's latest developer documentation.
 

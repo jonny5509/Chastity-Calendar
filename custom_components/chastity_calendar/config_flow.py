@@ -3,16 +3,17 @@ from __future__ import annotations
 
 import json
 import uuid
-from urllib.parse import urlencode, urlparse
+from urllib.parse import urlencode
 
-from aiohttp import web
-from homeassistant.components import webhook
+from homeassistant.components.cloud import CloudNotAvailable, async_remote_ui_url
 
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import selector
+
+from .obedience_auth import async_register_views
 
 from .const import (
     CONF_CHASTER_API_TOKEN,
@@ -37,56 +38,30 @@ from .const import (
 
 
 async def _async_start_obedience_authorization(flow):
-    """Open Obedience's official extension authorization page."""
-    flow._obedience_extension_id = str(uuid.uuid4())
-    flow._obedience_webhook_id = webhook.async_generate_id()
+    """Start the same authorization flow as the standalone Obedience integration."""
+    async_register_views(flow.hass)
 
-    async def handle_redirect(hass, webhook_id, request):
-        """Receive credentials returned by Obedience."""
-        params = request.query
-        returned_id = params.get("id", "")
-        secret = params.get("secret", "")
-        user_id = params.get("uid", "")
-        if returned_id != flow._obedience_extension_id or not secret or not user_id:
-            return web.Response(
-                status=400,
-                text="Obedience authorization failed. Return to Home Assistant and try again.",
-            )
-        result = await hass.config_entries.flow.async_configure(
-            flow.flow_id,
-            user_input={"id": returned_id, "secret": secret, "uid": user_id},
-        )
-        webhook.async_unregister(hass, webhook_id)
-        if result.get("type") != "external_step_done":
-            return web.Response(
-                status=400,
-                text="Home Assistant could not finish Obedience authorization. Return to Home Assistant.",
-            )
-        return web.Response(
-            text="<html><body><p>Obedience connected. You can close this tab and return to Home Assistant.</p><script>window.close()</script></body></html>",
-            content_type="text/html",
-        )
+    external_url = flow.hass.config.external_url
+    if not external_url or not external_url.startswith("https://"):
+        try:
+            external_url = async_remote_ui_url(flow.hass)
+        except CloudNotAvailable:
+            external_url = None
 
-    webhook.async_register(
-        flow.hass,
-        DOMAIN,
-        "Obedience authorization callback",
-        flow._obedience_webhook_id,
-        handle_redirect,
-        allowed_methods=["GET"],
-    )
-    redirect_url = webhook.async_generate_url(
-        flow.hass, flow._obedience_webhook_id, prefer_external=True
-    )
-    if urlparse(redirect_url).scheme != "https":
-        webhook.async_unregister(flow.hass, flow._obedience_webhook_id)
+    if not external_url or not external_url.startswith("https://"):
         return flow.async_abort(reason="obedience_https_required")
 
+    extension_id = str(uuid.uuid4())
+    domain_data = flow.hass.data.setdefault(DOMAIN, {})
+    pending = domain_data.setdefault("obedience_pending", {})
+    pending[extension_id] = flow.flow_id
+    callback_url = f"{external_url.rstrip('/')}/api/chastity_calendar/obedience/callback"
     authorization_url = "https://app.obedienceapp.com/home/extension-request?" + urlencode({
-        "id": flow._obedience_extension_id,
+        "id": extension_id,
         "name": "Chastity Calendar",
-        "redirect": redirect_url,
+        "redirect": callback_url,
     })
+    flow._obedience_extension_id = extension_id
     return flow.async_external_step(step_id="obedience", url=authorization_url)
 
 
