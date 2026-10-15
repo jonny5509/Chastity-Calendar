@@ -16,6 +16,7 @@ CONF_OBEDIENCE_YEARLY_HABIT_ID = "obedience_yearly_habit_id"
 CONF_MONTHLY_NOTIFICATION_DESTINATION = "monthly_notification_destination"
 CONF_MONTHLY_NOTIFICATION_TARGETS = "monthly_notification_targets"
 CONF_RANDOM_CAPTIONS_ENABLED = "random_captions_enabled"
+CONF_RELATIONSHIP_CAPTIONS_ENABLED = "relationship_captions_enabled"
 NOTIFICATION_DESTINATIONS = {
     "home_assistant": "Home Assistant",
     "phone": "Phone notification(s)",
