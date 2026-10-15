@@ -38,10 +38,10 @@
       },
       "obedience_settings": {
         "title": "Obedience habits",
-        "description": "Choose the optional Obedience habits to increment after authorization. Leave a habit ID blank to skip syncing that milestone.",
+        "description": "Authorization does not require habit IDs. After connecting, enter either ID if you want that milestone synced; leave both blank to finish setup without habit syncing.",
         "data": {
-          "obedience_daily_habit_id": "Daily-completion habit ID (optional)",
-          "obedience_yearly_habit_id": "365-day milestone habit ID (optional)"
+          "obedience_daily_habit_id": "Daily-completion habit ID (optional; leave blank to skip)",
+          "obedience_yearly_habit_id": "365-day milestone habit ID (optional; leave blank to skip)"
         }
       }
     },
