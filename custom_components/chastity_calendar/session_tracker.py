@@ -18,6 +18,7 @@ from .const import (
     CONF_EMLALOCK_API_TOKEN,
     CONF_EMLALOCK_USER_ID,
     CONF_POLL_MINUTES,
+    CONF_SERVICES,
     DOMAIN,
     EMOJIS,
 )
@@ -74,6 +75,7 @@ class SessionHistory:
         """Mark days from active sessions; preserve all previously recorded days."""
         options = self.entry.options
         today = dt_util.now().date()
+        enabled_services = set(options.get(CONF_SERVICES, self.entry.data.get(CONF_SERVICES, [])))
         additions: dict[str, dict[str, Any]] = {}
         # Keep one emoji per service/session so backfilled days look consistent.
         session_emojis = self.history.setdefault("_session_emojis", {})
@@ -101,7 +103,7 @@ class SessionHistory:
         # EmlaLock: status 1 is an active session; timestamps are Unix seconds.
         user_id = options.get(CONF_EMLALOCK_USER_ID)
         emla_token = options.get(CONF_EMLALOCK_API_TOKEN)
-        if user_id and emla_token:
+        if "emlalock" in enabled_services and user_id and emla_token:
             try:
                 payload = await self._get_json(
                     "https://api.emlalock.com/info",
@@ -120,7 +122,7 @@ class SessionHistory:
 
         # Chastify's user-wide developer token exposes the current session endpoint.
         chastify_token = options.get(CONF_CHASTIFY_DEV_TOKEN)
-        if chastify_token:
+        if "chastify" in enabled_services and chastify_token:
             try:
                 payload = await self._get_json(
                     "https://chastify.net/api/apps/v1/session",
@@ -139,7 +141,7 @@ class SessionHistory:
 
         # Chaster's public API returns the user's locks; only active, non-archived locks count.
         chaster_token = options.get(CONF_CHASTER_API_TOKEN)
-        if chaster_token:
+        if "chaster" in enabled_services and chaster_token:
             try:
                 payload = await self._get_json(
                     "https://api.chaster.app/locks",
