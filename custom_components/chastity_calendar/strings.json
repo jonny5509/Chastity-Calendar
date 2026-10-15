@@ -1,0 +1,32 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Chastity Calendar",
+        "description": "Set up the local calendar. Service connections are optional and can be configured after setup."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Only one Chastity Calendar instance is supported."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Calendar and service connections",
+        "description": "API tokens are stored in Home Assistant. Leave a service blank to disable its polling.",
+        "data": {
+          "events": "Monthly events (JSON)",
+          "emlalock_user_id": "EmlaLock user ID",
+          "emlalock_api_token": "EmlaLock API key",
+          "chastify_dev_token": "Chastify user-wide Developer API token",
+          "chaster_api_token": "Chaster API token",
+          "poll_minutes": "Polling interval (minutes)"
+        }
+      }
+    },
+    "error": {
+      "invalid_options": "Invalid events JSON or options. Check that months are unique values from 1 to 12 and each event has a title."
+    }
+  }
+}
