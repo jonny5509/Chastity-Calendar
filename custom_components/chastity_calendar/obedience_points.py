@@ -84,7 +84,7 @@ class ObediencePoints:
         # so a failed optional Obedience API request never loses the points.
         await self.store.async_save(self.data)
 
-        if extension_id and secret:
+        if options.get("obedience_enabled", bool(extension_id and secret)) and extension_id and secret:
             try:
                 synced_days = set(self.data["obedience_synced_days"])
                 if daily_habit and date_key not in synced_days:
