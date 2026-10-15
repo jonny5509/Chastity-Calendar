@@ -5,7 +5,8 @@ A Home Assistant custom integration with monthly theme events and optional daily
 ## Features
 - Native Home Assistant calendar entity for dashboards and automations.
 - Choose none, one, two, or all three services during setup; API credentials are optional and can be entered later.
-- Adds one all-day calendar event for each date a configured service reports an active session, decorated with a randomly selected 👑 💅 👠 💄 ✨ or 🎀 emoji.
+- Adds one all-day calendar event per date with a single emoji, even when two or all three services have overlapping sessions.
+- Creates three Home Assistant binary sensors: EmlaLock active session, Chaster active session, and Chastify active session. Each sensor reports on/off after a successful API check and is unavailable until that service is selected, configured, and checked.
 - Saves history in Home Assistant's local storage. Existing records are append-only and remain after a session ends, a token is removed, or Home Assistant restarts.
 - API polling interval configurable from 1 to 60 minutes (default 5).
 - Editable monthly theme list.
