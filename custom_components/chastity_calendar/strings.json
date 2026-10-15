@@ -62,6 +62,8 @@
           "poll_minutes": "Polling interval (minutes)",
           "monthly_notification_destination": "Monthly theme notification destination",
           "monthly_notification_targets": "Phone notification targets (select one or multiple phones)",
+          "random_captions_enabled": "Enable daily random caption notifications",
+          "relationship_captions_enabled": "Include relationship-focused captions (turn off if not in a relationship)",
           "obedience_extension_id": "Obedience extension ID",
           "obedience_secret": "Obedience extension secret",
           "obedience_daily_habit_id": "Obedience daily-completion habit ID",
