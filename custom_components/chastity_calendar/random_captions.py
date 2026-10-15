@@ -121,6 +121,51 @@ CAPTIONS = (
     "Let patience be the last thought of the day.",
     "Wind down, breathe deeply, and look after yourself.",
     "Today's effort is enough; make space for rest.",
+    # Confident, expressive and photo-friendly
+    "A quiet symbol of a choice I make with intention.",
+    "Confidence comes from knowing why I chose this path.",
+    "A private promise, carried with quiet pride.",
+    "Simple reminder, strong intention.",
+    # Playful teasing and anticipation
+    "The keyholder may be winning, but I'm still smiling.",
+    "Patience practice: today's lesson is still in session.",
+    "A little suspense keeps the story interesting.",
+    "Waiting well deserves its own little victory.",
+    # Bold, flirty and self-assured
+    "A little mystery, a lot of commitment.",
+    "Composure on the outside, anticipation on the inside.",
+    "My choice, my confidence, my story.",
+    "A bold promise carried with a calm smile.",
+    # Devotion and personal growth
+    "I am learning what steady devotion looks like for me.",
+    "Every day gives me another chance to act with intention.",
+    "Let this practice bring clarity, not pressure.",
+    "Growth is measured by care as much as by consistency.",
+    # Permanent and long-haul commitment
+    "I chose this path thoughtfully, and I revisit that choice honestly.",
+    "A lasting commitment still deserves daily reflection.",
+    "Long-term devotion is built with patience and care.",
+    "My promise matters because I continue to choose it.",
+    # Bedtime reflection
+    "The day is done; let gratitude take the lead tonight.",
+    "Rest well, reflect kindly, and begin again tomorrow.",
+    "A peaceful night starts with looking after yourself.",
+    "Close the day with calm, not pressure.",
+    # Calm and mindful focus
+    "Breathe slowly and return to the intention that grounds you.",
+    "Let the small rituals of today bring you back to centre.",
+    "Focus on what you can choose in this moment.",
+    "A steady mind makes room for thoughtful decisions.",
+    # Light-hearted cage-life humour
+    "Today's productivity report: commitment remains on schedule.",
+    "The calendar has more follow-through than my to-do list.",
+    "Patience: the subscription that renews every morning.",
+    "Another day of keeping calm and carrying on.",
+    # Romantic, non-explicit affection
+    "Your kindness makes our shared promise feel safe.",
+    "Love is strongest when trust and honesty travel together.",
+    "I treasure the care we bring to this commitment.",
+    "A shared promise should always make room for tenderness.",
 )
 
 # These are deliberately separate and disabled by default. They only join the
@@ -152,6 +197,26 @@ RELATIONSHIP_CAPTIONS = (
     "A wink, a reminder, and back to my day.",
     "Anticipation is sweeter when trust comes first.",
     "A little teasing works best with kindness and clear communication.",
+    # Keyholder appreciation and shared power
+    "Thank you for making trust part of our everyday routine.",
+    "I value the care behind the role you hold in our dynamic.",
+    "Your patience and honesty mean more than grand gestures.",
+    "We make this work by listening to each other.",
+    # Female-led dynamics, kept respectful and consensual
+    "I enjoy the confidence and care in our chosen dynamic.",
+    "A clear agreement makes playful power feel more meaningful.",
+    "Your leadership shines brightest when we both feel heard.",
+    "Trust is what gives our roles their meaning.",
+    # Tease, anticipation and flirtation
+    "You know how to make an ordinary day feel intriguing.",
+    "A playful message from you can brighten my whole day.",
+    "Anticipation is fun when we're both enjoying the game.",
+    "A little flirtation, a lot of trust, and a smile to match.",
+    # Shared commitment and communication
+    "Our boundaries matter just as much as our promises.",
+    "Checking in with each other is part of the commitment.",
+    "We can be playful and still take each other's comfort seriously.",
+    "The best dynamic is one we keep choosing together.",
 )
 
 
