@@ -1,0 +1,10 @@
+mark_day_complete:
+  name: Mark day complete
+  description: Record a completed calendar day and update completion points.
+  fields:
+    date:
+      name: Date
+      description: Date to mark complete. If omitted, today's date is used.
+      required: false
+      selector:
+        date: {}
