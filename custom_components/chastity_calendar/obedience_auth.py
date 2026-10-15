@@ -31,7 +31,15 @@ class ObedienceAuthorizationCallbackView(HomeAssistantView):
         secret = request.query.get("secret", "")
         user_id = request.query.get("uid", "")
         pending = hass.data.get(DOMAIN, {}).get("obedience_pending", {})
-        flow_id = pending.get(extension_id)
+        flow_record = pending.get(extension_id)
+        # New records remember which manager owns the flow. Keep accepting the
+        # legacy flow-id string while an authorization is already in progress.
+        if isinstance(flow_record, dict):
+            flow_id = flow_record.get("flow_id")
+            preferred_manager = flow_record.get("manager", "flow")
+        else:
+            flow_id = flow_record
+            preferred_manager = "flow"
 
         if not flow_id or not extension_id or not secret or not user_id:
             return web.Response(
@@ -42,38 +50,34 @@ class ObedienceAuthorizationCallbackView(HomeAssistantView):
         user_input = {"id": extension_id, "secret": secret, "uid": user_id}
         result = None
         errors = []
+        unexpected_types = []
+        expected_type = FlowResultType.EXTERNAL_STEP_DONE
 
-        # Initial setup is a config flow; reconnecting from the integration's
-        # options page is an options flow. Home Assistant manages these separately.
-        for manager_name in ("flow", "options"):
+        # Initial setup and options flows have separate managers. Try the owner
+        # first, then the other manager for compatibility with older pending flows.
+        manager_order = (preferred_manager, "options" if preferred_manager == "flow" else "flow")
+        for manager_name in manager_order:
             manager = getattr(hass.config_entries, manager_name, None)
             if manager is None:
+                errors.append(f"{manager_name} flow manager is unavailable")
                 continue
             try:
-                result = await manager.async_configure(flow_id, user_input)
-                break
+                candidate = await manager.async_configure(flow_id, user_input)
             except Exception as err:
                 errors.append(f"{manager_name} flow: {err}")
+                continue
+            result_type = candidate.get("type")
+            if result_type in (expected_type, expected_type.value, "external_done"):
+                result = candidate
+                break
+            unexpected_types.append(f"{manager_name} flow returned {result_type}")
 
         if result is None:
             pending.pop(extension_id, None)
-            detail = "; ".join(errors) or "No compatible flow manager was available."
+            detail = "; ".join(errors + unexpected_types) or "No compatible flow manager was available."
             return web.Response(
                 status=500,
                 text=f"Home Assistant could not complete Obedience authorization: {detail}",
-            )
-
-        result_type = result.get("type")
-        expected_type = FlowResultType.EXTERNAL_STEP_DONE
-        if result_type not in (
-            expected_type,
-            expected_type.value,
-            "external_done",
-        ):
-            pending.pop(extension_id, None)
-            return web.Response(
-                status=500,
-                text=f"Unexpected authorization flow result: {result_type}",
             )
 
         pending.pop(extension_id, None)

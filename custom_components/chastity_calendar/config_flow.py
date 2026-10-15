@@ -54,7 +54,10 @@ async def _async_start_obedience_authorization(flow):
     extension_id = str(uuid.uuid4())
     domain_data = flow.hass.data.setdefault(DOMAIN, {})
     pending = domain_data.setdefault("obedience_pending", {})
-    pending[extension_id] = flow.flow_id
+    pending[extension_id] = {
+        "flow_id": flow.flow_id,
+        "manager": "options" if isinstance(flow, config_entries.OptionsFlow) else "flow",
+    }
     callback_url = f"{external_url.rstrip('/')}/api/chastity_calendar/obedience/callback"
     authorization_url = "https://app.obedienceapp.com/home/extension-request?" + urlencode({
         "id": extension_id,
