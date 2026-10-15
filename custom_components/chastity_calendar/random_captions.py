@@ -15,6 +15,7 @@ from .const import (
     CONF_MONTHLY_NOTIFICATION_DESTINATION,
     CONF_MONTHLY_NOTIFICATION_TARGETS,
     CONF_RANDOM_CAPTIONS_ENABLED,
+    CONF_RELATIONSHIP_CAPTIONS_ENABLED,
     DOMAIN,
 )
 
@@ -39,7 +40,63 @@ CAPTIONS = (
     "Devotion lasts longer than desire. That is why I stay.",
     "One decision, a whole lifetime. I would make it again.",
     "Locked in heart and in will. Committed for all my days.",
+    # Discipline and patience
+    "Progress comes from patience, not rushing.",
+    "Today is an opportunity to practise self-control.",
+    "Small acts of discipline build lasting habits.",
+    "Stay focused on the reasons you started.",
+    "Patience is a strength worth practising.",
+    "A quiet day can still be a meaningful achievement.",
+    "Consistency matters more than perfection.",
+    "Take a breath, stay grounded and enjoy the journey.",
+    # Playful reminders
+    "Your daily reminder has arrived. You know the drill!",
+    "Another day, another reason to smile at your commitment.",
+    "Consider this your friendly little reminder.",
+    "The calendar has spoken. Time to check in!",
+    "Commitment check: still showing up?",
+    "A little reminder to keep your promises to yourself.",
+    "Your future self will appreciate today's consistency.",
+    "No skipping today's reminder. The calendar remembers!",
+    # Milestones and encouragement
+    "One more day completed. Take a moment to recognise your consistency.",
+    "A week of commitment is worth celebrating.",
+    "Every milestone starts with a single day.",
+    "Look how far you've come. Recognise your progress.",
+    "Today marks another step along your journey.",
+    "Celebrate progress, not just the final destination.",
+    "Your consistency deserves a moment of appreciation.",
+    "Every milestone tells a story of patience and perseverance.",
+    # Personal wellbeing check-ins
+    "How are you feeling about your commitment today?",
+    "Take a moment to check in with yourself.",
+    "Remember to make time for your wellbeing today.",
+    "A good commitment includes listening to yourself.",
+    "Stay hydrated, take a break and look after yourself.",
+    "It's okay to reassess your goals as life changes.",
+    "Progress should support your wellbeing, not come at its expense.",
+    "Today's reminder: your comfort and wellbeing matter.",
 )
+
+# These are deliberately separate and disabled by default. They only join the
+# random pool when the user explicitly enables relationship-focused captions.
+RELATIONSHIP_CAPTIONS = (
+    "Trust is built through honesty, communication and care.",
+    "A meaningful commitment should always leave room for an honest conversation.",
+    "Devotion means showing up with care and intention.",
+    "Respect the promise, respect the people involved.",
+    "Strong commitments are supported by mutual trust.",
+    "Honesty makes a commitment stronger.",
+    "A healthy dynamic begins with communication and consent.",
+    "Commitment and self-respect can grow together.",
+)
+
+
+def get_captions(settings: dict) -> tuple[str, ...]:
+    """Return captions, including relationship-focused ones only when enabled."""
+    if settings.get(CONF_RELATIONSHIP_CAPTIONS_ENABLED, False):
+        return CAPTIONS + RELATIONSHIP_CAPTIONS
+    return CAPTIONS
 
 
 async def async_setup_random_captions(hass: HomeAssistant, entry: ConfigEntry) -> None:
@@ -75,7 +132,7 @@ async def async_setup_random_captions(hass: HomeAssistant, entry: ConfigEntry) -
         current = {**entry.data, **entry.options}
         destination = current.get(CONF_MONTHLY_NOTIFICATION_DESTINATION, "home_assistant")
         targets = current.get(CONF_MONTHLY_NOTIFICATION_TARGETS, [])
-        message = random.choice(CAPTIONS)
+        message = random.choice(get_captions(current))
         delivered = False
 
         if destination in ("home_assistant", "both"):
