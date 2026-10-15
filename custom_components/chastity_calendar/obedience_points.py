@@ -7,6 +7,7 @@ from typing import Any
 
 import aiohttp
 from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
@@ -63,7 +64,7 @@ class ObediencePoints:
             len(completed_days) >= YEARLY_COMPLETIONS
             and not self.data.get("yearly_bonus_awarded", False)
         )
-        if should_award_yearly:
+        if should_award_yearly or self.data.get("yearly_bonus_awarded", False):
             self.data["total_points"] += YEARLY_BONUS
 
         options = {**self.entry.data, **self.entry.options}
@@ -81,6 +82,7 @@ class ObediencePoints:
             except (aiohttp.ClientError, TimeoutError, ValueError) as err:
                 _LOGGER.warning("Could not sync completion to Obedience: %s", err)
                 await self.store.async_save(self.data)
+        async_dispatcher_send(self.hass, f"{DOMAIN}_points_updated_{self.entry.entry_id}")
                 return
 
         if should_award_yearly:
