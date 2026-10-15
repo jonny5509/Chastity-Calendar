@@ -18,16 +18,16 @@
       },
       "chaster": {
         "title": "Configure Chaster",
-        "description": "Enter your Chaster API token. Leave it blank to configure this service later.",
+        "description": "Enter your Chaster Developer Token. Leave it blank to configure this service later.",
         "data": {
-          "chaster_api_token": "Chaster API token"
+          "chaster_api_token": "Chaster Developer Token"
         }
       },
       "chastify": {
         "title": "Configure Chastify",
-        "description": "Enter your Chastify Developer API token. Leave it blank to configure this service later.",
+        "description": "Enter your Chastify API key. Leave it blank to configure this service later.",
         "data": {
-          "chastify_dev_token": "Chastify user-wide Developer API token"
+          "chastify_dev_token": "Chastify user-wide Developer API key"
         }
       }
     },
@@ -56,16 +56,16 @@
       },
       "chaster": {
         "title": "Configure Chaster",
-        "description": "Enter your Chaster API token. Leave it blank to configure this service later.",
+        "description": "Enter your Chaster Developer Token. Leave it blank to configure this service later.",
         "data": {
-          "chaster_api_token": "Chaster API token"
+          "chaster_api_token": "Chaster Developer Token"
         }
       },
       "chastify": {
         "title": "Configure Chastify",
-        "description": "Enter your Chastify Developer API token. Leave it blank to configure this service later.",
+        "description": "Enter your Chastify API key. Leave it blank to configure this service later.",
         "data": {
-          "chastify_dev_token": "Chastify user-wide Developer API token"
+          "chastify_dev_token": "Chastify user-wide Developer API key"
         }
       }
     },
