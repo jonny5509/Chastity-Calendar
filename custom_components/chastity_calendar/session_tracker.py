@@ -74,14 +74,19 @@ class SessionHistory:
         """Mark days from active sessions; preserve all previously recorded days."""
         options = self.entry.options
         today = dt_util.now().date()
-        additions: dict[str, set[str]] = {}
+        additions: dict[str, dict[str, Any]] = {}
+        # Keep one emoji per service/session so backfilled days look consistent.
+        session_emojis = self.history.setdefault("_session_emojis", {})
 
-        async def add_span(service: str, start: date | None) -> None:
+        async def add_span(service: str, start: date | None, session_id: str | None = None) -> None:
             if start is None or start > today:
                 return
+            session_key = f"{service}:{session_id or start.isoformat()}"
+            emoji = session_emojis.setdefault(session_key, random.choice(EMOJIS))
             day = start
             while day <= today:
-                additions.setdefault(day.isoformat(), set()).add(service)
+                record = additions.setdefault(day.isoformat(), {"emoji": emoji, "services": set()})
+                record["services"].add(service)
                 day += timedelta(days=1)
 
         # EmlaLock: status 1 is an active session; timestamps are Unix seconds.
@@ -96,8 +101,8 @@ class SessionHistory:
                 session = (payload or {}).get("chastitysession") or {}
                 if int(session.get("status", 0)) == 1:
                     stamp = session.get("startdate") or session.get("created")
-                    start = datetime.fromtimestamp(int(stamp), dt_util.DEFAULT_TIME_ZONE).date() if stamp else today
-                    await add_span("EmlaLock", start)
+                    start = self._parse_date(stamp) or today
+                    await add_span("EmlaLock", start, str(session.get("id") or stamp or start.isoformat()))
             except (aiohttp.ClientError, ValueError, TypeError, KeyError) as err:
                 _LOGGER.warning("Unable to refresh EmlaLock session status (%s)", type(err).__name__)
 
@@ -113,7 +118,7 @@ class SessionHistory:
                 if lock:
                     stamp = lock.get("startDate") or lock.get("startedAt") or lock.get("createdAt")
                     start = self._parse_date(stamp) or today
-                    await add_span("Chastify", start)
+                    await add_span("Chastify", start, str(lock.get("id") or stamp or start.isoformat()))
             except (aiohttp.ClientError, ValueError, TypeError, KeyError) as err:
                 _LOGGER.warning("Unable to refresh Chastify session status (%s)", type(err).__name__)
 
@@ -133,18 +138,26 @@ class SessionHistory:
                     active = lock.get("active") is True or status in {"active", "running", "ongoing"}
                     if active and not lock.get("archived", False):
                         stamp = lock.get("startDate") or lock.get("startedAt") or lock.get("createdAt")
-                        await add_span("Chaster", self._parse_date(stamp) or today)
+                        start = self._parse_date(stamp) or today
+                        await add_span("Chaster", start, str(lock.get("id") or stamp or start.isoformat()))
             except (aiohttp.ClientError, ValueError, TypeError, KeyError) as err:
                 _LOGGER.warning("Unable to refresh Chaster session status (%s)", type(err).__name__)
 
         changed = False
-        for day, services in additions.items():
-            record = self.history.setdefault(day, {"emoji": random.choice(EMOJIS), "services": []})
+        for day, incoming in additions.items():
+            record = self.history.setdefault(day, {"emoji": incoming["emoji"], "services": []})
+            if "emoji" not in record:
+                record["emoji"] = incoming["emoji"]
+                changed = True
             existing = set(record.get("services", []))
-            merged = sorted(existing | services)
+            merged = sorted(existing | incoming["services"])
             if merged != record.get("services", []):
                 record["services"] = merged
                 changed = True
+        # Persist the session-to-emoji mapping even if every date already existed.
+        if session_emojis and not self.history.get("_session_emojis_saved"):
+            self.history["_session_emojis_saved"] = True
+            changed = True
         if changed:
             await self.store.async_save(self.history)
             self.hass.bus.async_fire(f"{DOMAIN}_history_updated", {"entry_id": self.entry.entry_id})
