@@ -1,0 +1,79 @@
+name: Validate integration
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  python-and-metadata:
+    name: Python syntax and metadata
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Compile integration Python files
+        run: python -m compileall -q custom_components/chastity_calendar
+
+      - name: Validate JSON metadata
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          paths = [
+              Path("hacs.json"),
+              Path("custom_components/chastity_calendar/manifest.json"),
+              Path("custom_components/chastity_calendar/strings.json"),
+          ]
+          for path in paths:
+              with path.open(encoding="utf-8") as stream:
+                  json.load(stream)
+              print(f"Valid JSON: {path}")
+          PY
+
+      - name: Validate YAML syntax
+        run: |
+          python -m pip install --disable-pip-version-check PyYAML
+          python - <<'PY'
+          from pathlib import Path
+          import yaml
+
+          paths = list(Path(".github/workflows").glob("*.yml"))
+          paths += list(Path("custom_components/chastity_calendar").glob("*.yaml"))
+          for path in paths:
+              with path.open(encoding="utf-8") as stream:
+                  list(yaml.safe_load_all(stream))
+              print(f"Valid YAML: {path}")
+          PY
+
+  hassfest:
+    name: Home Assistant hassfest
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Run hassfest
+        uses: home-assistant/actions/hassfest@master
+
+  hacs:
+    name: HACS validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Validate HACS integration repository
+        uses: hacs/action@main
+        with:
+          category: integration
