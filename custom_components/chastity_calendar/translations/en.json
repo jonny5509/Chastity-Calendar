@@ -1,0 +1,27 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Chastity Calendar",
+        "description": "Create a local calendar of monthly themes."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Only one Chastity Calendar instance is supported."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Monthly themes",
+        "description": "Edit the JSON list. Each item needs month (1-12) and title; description is optional.",
+        "data": {
+          "events": "Monthly events (JSON)"
+        }
+      }
+    },
+    "error": {
+      "invalid_events": "Invalid JSON or event data. Check each month and title."
+    }
+  }
+}
