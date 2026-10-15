@@ -144,7 +144,13 @@ class SessionHistory:
                 lock = (payload or {}).get("lock") or {}
                 set_status("chastify", bool(lock))
                 if lock:
-                    stamp = lock.get("startDate") or lock.get("startedAt") or lock.get("createdAt")
+                    stamp = (
+                        lock.get("startDate")
+                        or lock.get("startedAt")
+                        or lock.get("start_date")
+                        or lock.get("createdAt")
+                        or lock.get("created")
+                    )
                     start = self._parse_date(stamp) or today
                     await add_span(
                         "Chastify", start, str(lock.get("id") or stamp or start.isoformat()),
@@ -165,9 +171,13 @@ class SessionHistory:
                 if isinstance(payload, list):
                     locks = payload
                 elif isinstance(payload, dict):
+                    lock_container = payload
+                    # Some API responses nest the result list under a data object.
+                    if isinstance(lock_container.get("data"), dict):
+                        lock_container = lock_container["data"]
                     locks = next(
-                        (payload[key] for key in ("items", "results", "locks", "data")
-                         if isinstance(payload.get(key), list)),
+                        (lock_container[key] for key in ("items", "results", "locks")
+                         if isinstance(lock_container.get(key), list)),
                         [],
                     )
                 else:
