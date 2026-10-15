@@ -21,6 +21,7 @@ from .const import (
     DOMAIN,
 )
 from .obedience_points import ObediencePoints
+from .random_captions import async_setup_random_captions
 
 PLATFORMS = [Platform.CALENDAR, Platform.BINARY_SENSOR, Platform.SENSOR]
 _LOGGER = logging.getLogger(__name__)
@@ -40,6 +41,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     entry.async_on_unload(entry.add_update_listener(_async_options_updated))
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     await _async_setup_monthly_notification(hass, entry)
+    await async_setup_random_captions(hass, entry)
     if not hass.services.has_service(DOMAIN, "mark_day_complete"):
         async def mark_day_complete(call):
             """Record a completed day for each configured integration entry."""
