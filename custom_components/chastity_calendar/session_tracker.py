@@ -144,7 +144,13 @@ class SessionHistory:
                 lock = (payload or {}).get("lock") or {}
                 set_status("chastify", bool(lock))
                 if lock:
-                    stamp = lock.get("startDate") or lock.get("startedAt") or lock.get("createdAt")
+                    stamp = (
+                        lock.get("startDate")
+                        or lock.get("startedAt")
+                        or lock.get("start_date")
+                        or lock.get("createdAt")
+                        or lock.get("created")
+                    )
                     start = self._parse_date(stamp) or today
                     await add_span(
                         "Chastify", start, str(lock.get("id") or stamp or start.isoformat()),
@@ -161,21 +167,43 @@ class SessionHistory:
                     "https://api.chaster.app/locks",
                     headers={"Authorization": f"Bearer {chaster_token}"},
                 )
-                locks = payload if isinstance(payload, list) else (payload or {}).get("items", [])
+                # The Public API may return a list directly or wrap locks in a result field.
+                if isinstance(payload, list):
+                    locks = payload
+                elif isinstance(payload, dict):
+                    lock_container = payload
+                    # Some API responses nest the result list under a data object.
+                    if isinstance(lock_container.get("data"), dict):
+                        lock_container = lock_container["data"]
+                    locks = next(
+                        (lock_container[key] for key in ("items", "results", "locks")
+                         if isinstance(lock_container.get(key), list)),
+                        [],
+                    )
+                else:
+                    locks = []
                 active_locks = []
-                for lock in locks or []:
+                for lock in locks:
                     if not isinstance(lock, dict):
                         continue
                     status = str(lock.get("status", "")).lower()
-                    active = lock.get("active") is True or status in {"active", "running", "ongoing"}
-                    if active and not lock.get("archived", False):
+                    # Chaster reports ongoing locks as "locked" in its Public API.
+                    active = lock.get("active") is True or status in {
+                        "active", "running", "ongoing", "locked"
+                    }
+                    archived = (
+                        lock.get("archived") is True
+                        or lock.get("isArchived") is True
+                        or bool(lock.get("archivedAt"))
+                    )
+                    if active and not archived:
                         active_locks.append(lock)
                 set_status("chaster", bool(active_locks))
                 for lock in active_locks:
                     stamp = lock.get("startDate") or lock.get("startedAt") or lock.get("createdAt")
                     start = self._parse_date(stamp) or today
                     await add_span(
-                        "Chaster", start, str(lock.get("id") or stamp or start.isoformat()),
+                        "Chaster", start, str(lock.get("id") or lock.get("_id") or stamp or start.isoformat()),
                         self._format_start_time(stamp),
                     )
             except (aiohttp.ClientError, ValueError, TypeError, KeyError) as err:
