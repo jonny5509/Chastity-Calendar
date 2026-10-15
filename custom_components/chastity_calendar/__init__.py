@@ -121,11 +121,14 @@ async def _async_setup_monthly_notification(
 
     def handle_month_change(now: datetime) -> None:
         """Run the reminder at local midnight on the first day of each month."""
-        hass.async_create_task(send_reminder(now))
+        if now.day == 1:
+            hass.async_create_task(send_reminder(now))
 
+    # async_track_time_change supports time fields, but not a day-of-month field.
+    # Run daily at this time and filter to the first day in the callback.
     entry.async_on_unload(
         async_track_time_change(
-            hass, handle_month_change, day=1, hour=0, minute=0, second=5
+            hass, handle_month_change, hour=0, minute=0, second=5
         )
     )
 
