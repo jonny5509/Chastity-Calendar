@@ -20,8 +20,8 @@ A Home Assistant custom integration with monthly theme events and optional daily
 ## Configure service tracking
 During initial setup, select none, one, or multiple services to track. Home Assistant then shows a separate configuration page for each selected service only. You can change the selection later from the integration's **Configure** page; the configuration flow again shows credential pages only for the selected services. Enter credentials for each selected service; all services are optional:
 - **EmlaLock:** user ID and API key.
-- **Chastify:** user-wide Developer API token with `locks:read` scope.
-- **Chaster:** Public API developer/access token with permission to read locks.
+- **Chaster:** Developer Token for the Chaster Public API. It is sent as a Bearer token.
+- **Chastify:** user-wide Developer API key with the `locks:read` scope. It is sent as a Bearer token.
 
 Internet access: yes — Home Assistant needs outbound internet access to call the selected services' APIs and poll session status. The calendar entity and saved history are stored locally in Home Assistant, but live service tracking and API-based historical backfill will not work while Home Assistant cannot reach those services. Credentials are stored in the Home Assistant config entry, sent only to the respective service, and are not written to the repository or included in logs. Never share your tokens. If a token is revoked or a service is unavailable, already-saved calendar history is retained. Polling detects sessions while the integration is running; historical days before setup can only be recovered if an API exposes them.
 
