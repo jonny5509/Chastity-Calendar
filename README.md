@@ -2,6 +2,9 @@
 
 A Home Assistant custom integration with monthly theme events and optional daily session-history tracking for EmlaLock, Chastify, and Chaster.
 
+## Requirements
+- **Home Assistant Cloud (Nabu Casa) is not required.** The integration runs inside your Home Assistant instance. Calendar entries, local completion tracking, points storage, and Home Assistant services work locally. Internet access is needed only for integrations that call external service APIs, such as EmlaLock, Chaster, Chastify, or optional Obedience syncing. Phone notifications depend on your own configured Home Assistant notification integration; they do not require Home Assistant Cloud specifically.
+
 ## Features
 - Native Home Assistant calendar entity for dashboards and automations.
 - Choose none, one, two, or all three services during setup. A separate credentials page is shown only for each selected service; credentials can be left blank and added later.
