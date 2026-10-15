@@ -8,6 +8,10 @@ CONF_EMLALOCK_API_TOKEN = "emlalock_api_token"
 CONF_CHASTIFY_DEV_TOKEN = "chastify_dev_token"
 CONF_CHASTER_API_TOKEN = "chaster_api_token"
 CONF_POLL_MINUTES = "poll_minutes"
+CONF_OBEDIENCE_EXTENSION_ID = "obedience_extension_id"
+CONF_OBEDIENCE_SECRET = "obedience_secret"
+CONF_OBEDIENCE_DAILY_HABIT_ID = "obedience_daily_habit_id"
+CONF_OBEDIENCE_YEARLY_HABIT_ID = "obedience_yearly_habit_id"
 EMOJIS = ("👑", "💅", "👠", "💄", "✨", "🎀")
 DEFAULT_EVENTS = [
     {"month": 1, "title": "Jailbird January", "description": "Community-themed chastity challenge. Set your own optional, consensual goals."},
@@ -16,7 +20,7 @@ DEFAULT_EVENTS = [
     {"month": 4, "title": "Abstinence April", "description": "A month-long abstinence prompt. Choose your own boundaries and duration."},
     {"month": 5, "title": "You May Not", "description": "A playful community-style challenge name; customize the rules or rename it."},
     {"month": 6, "title": "Jerk-NO June", "description": "An optional abstinence-themed challenge prompt."},
-    {"month": 7, "title": "Juicy July", "description": "A community-style theme; use it for a challenge, check-in, or personal goal."},
+    {"month": 7, "title": "Juicy July", "description": "A community-style theme; customize it to your preferences."},
     {"month": 8, "title": "Alternate August", "description": "A less standardized community theme. Customize or replace it."},
     {"month": 9, "title": "Sexless September", "description": "An optional abstinence-themed challenge prompt."},
     {"month": 10, "title": "Locktober", "description": "A popular month-long chastity community challenge. Participation is optional and consensual."},
