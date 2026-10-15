@@ -3,9 +3,10 @@
     "step": {
       "user": {
         "title": "Chastity Calendar",
-        "description": "Choose none, one, or multiple services to track. Only services you select will get a configuration page. Connecting services requires Home Assistant to have internet access.",
+        "description": "Choose services to track and optionally enable Obedience sync. Each selected service gets its own credentials page. Connecting services requires internet access.",
         "data": {
-          "services": "Services to track (select any combination, or none)"
+          "services": "Services to track (select any combination, or none)",
+          "obedience_enabled": "Configure Obedience habit syncing"
         }
       },
       "emlalock": {
@@ -28,6 +29,16 @@
         "description": "Enter your Chastify API key. Leave it blank to configure this service later.",
         "data": {
           "chastify_dev_token": "Chastify user-wide Developer API key"
+        }
+      },
+      "obedience": {
+        "title": "Configure Obedience",
+        "description": "Optional: connect the Obedience extension and choose the habits to increment. First grant the extension permission in Obedience, then enter its extension ID and per-user secret. Leave credentials blank to use Home Assistant-only points.",
+        "data": {
+          "obedience_extension_id": "Obedience extension ID",
+          "obedience_secret": "Obedience per-user extension secret",
+          "obedience_daily_habit_id": "Daily-completion habit ID (optional)",
+          "obedience_yearly_habit_id": "365-day milestone habit ID (optional)"
         }
       }
     },
@@ -39,7 +50,7 @@
     "step": {
       "init": {
         "title": "Calendar and service connections",
-        "description": "Select the services to poll. Only selected services will show a separate credentials page. Home Assistant needs internet access to contact their APIs; the calendar and saved history remain local. Monthly theme reminders can appear in Home Assistant, on selected notify-enabled phones, or both. Optional Obedience settings sync completed days to configured habits; leave them blank to track points only in Home Assistant.",
+        "description": "Configure calendar events, tracked services, polling, and monthly reminders. Enable Obedience to open its own separate credentials and habit setup page. Saved calendar history remains local.",
         "data": {
           "events": "Monthly events (JSON)",
           "services": "Services to track (select any combination, or none)",
@@ -49,7 +60,8 @@
           "obedience_extension_id": "Obedience extension ID",
           "obedience_secret": "Obedience extension secret",
           "obedience_daily_habit_id": "Obedience daily-completion habit ID",
-          "obedience_yearly_habit_id": "Obedience yearly-bonus habit ID"
+          "obedience_yearly_habit_id": "Obedience yearly-bonus habit ID",
+          "obedience_enabled": "Enable Obedience habit syncing"
         }
       },
       "emlalock": {
@@ -72,6 +84,16 @@
         "description": "Enter your Chastify API key. Leave it blank to configure this service later.",
         "data": {
           "chastify_dev_token": "Chastify user-wide Developer API key"
+        }
+      },
+      "obedience": {
+        "title": "Configure Obedience",
+        "description": "Grant the extension access in Obedience before entering its extension ID and per-user secret. Choose the optional habit IDs you want Home Assistant to increment.",
+        "data": {
+          "obedience_extension_id": "Obedience extension ID",
+          "obedience_secret": "Obedience per-user extension secret",
+          "obedience_daily_habit_id": "Daily-completion habit ID (optional)",
+          "obedience_yearly_habit_id": "365-day milestone habit ID (optional)"
         }
       }
     },
