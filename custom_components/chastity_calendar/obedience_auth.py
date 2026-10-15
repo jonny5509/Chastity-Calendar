@@ -25,13 +25,12 @@ class ObedienceAuthorizationCallbackView(HomeAssistantView):
     requires_auth = False
 
     async def get(self, request: web.Request) -> web.Response:
-        """Validate authorization response and resume the config flow."""
+        """Validate authorization response and resume the correct flow."""
         hass = request.app["hass"]
         extension_id = request.query.get("id", "")
         secret = request.query.get("secret", "")
         user_id = request.query.get("uid", "")
-        domain_data = hass.data.get(DOMAIN, {})
-        pending = domain_data.get("obedience_pending", {})
+        pending = hass.data.get(DOMAIN, {}).get("obedience_pending", {})
         flow_id = pending.get(extension_id)
 
         if not flow_id or not extension_id or not secret or not user_id:
@@ -40,28 +39,41 @@ class ObedienceAuthorizationCallbackView(HomeAssistantView):
                 text="Invalid Obedience authorization response. Return to Home Assistant and try again.",
             )
 
-        try:
-            result = await hass.config_entries.flow.async_configure(
-                flow_id,
-                user_input={"id": extension_id, "secret": secret, "uid": user_id},
-            )
-        except Exception:
+        user_input = {"id": extension_id, "secret": secret, "uid": user_id}
+        result = None
+        errors = []
+
+        # Initial setup is a config flow; reconnecting from the integration's
+        # options page is an options flow. Home Assistant manages these separately.
+        for manager_name in ("flow", "options"):
+            manager = getattr(hass.config_entries, manager_name, None)
+            if manager is None:
+                continue
+            try:
+                result = await manager.async_configure(flow_id, user_input)
+                break
+            except Exception as err:
+                errors.append(f"{manager_name} flow: {err}")
+
+        if result is None:
             pending.pop(extension_id, None)
+            detail = "; ".join(errors) or "No compatible flow manager was available."
             return web.Response(
                 status=500,
-                text="Home Assistant could not complete Obedience authorization. Return to Home Assistant and try again.",
+                text=f"Home Assistant could not complete Obedience authorization: {detail}",
             )
 
         result_type = result.get("type")
+        expected_type = FlowResultType.EXTERNAL_STEP_DONE
         if result_type not in (
-            FlowResultType.EXTERNAL_STEP_DONE,
-            FlowResultType.EXTERNAL_STEP_DONE.value,
+            expected_type,
+            expected_type.value,
             "external_done",
         ):
             pending.pop(extension_id, None)
             return web.Response(
                 status=500,
-                text="Unexpected result completing Obedience authorization. Return to Home Assistant.",
+                text=f"Unexpected authorization flow result: {result_type}",
             )
 
         pending.pop(extension_id, None)
