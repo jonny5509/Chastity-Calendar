@@ -37,6 +37,7 @@ class ObediencePoints:
             "completed_days": [],
             "total_points": 0,
             "yearly_bonus_awarded": False,
+            "yearly_obedience_synced": False,
         }
 
     async def async_load(self) -> None:
@@ -64,7 +65,7 @@ class ObediencePoints:
             len(completed_days) >= YEARLY_COMPLETIONS
             and not self.data.get("yearly_bonus_awarded", False)
         )
-        if should_award_yearly or self.data.get("yearly_bonus_awarded", False):
+        if self.data.get("yearly_bonus_awarded", False):
             self.data["total_points"] += YEARLY_BONUS
 
         options = {**self.entry.data, **self.entry.options}
@@ -77,8 +78,9 @@ class ObediencePoints:
             try:
                 if daily_habit:
                     await self._increment_habit(extension_id, secret, daily_habit)
-                if should_award_yearly and yearly_habit:
+                if self.data.get("yearly_bonus_awarded", False) and yearly_habit and not self.data.get("yearly_obedience_synced", False):
                     await self._increment_habit(extension_id, secret, yearly_habit)
+                    self.data["yearly_obedience_synced"] = True
             except (aiohttp.ClientError, TimeoutError, ValueError) as err:
                 _LOGGER.warning("Could not sync completion to Obedience: %s", err)
                 await self.store.async_save(self.data)
