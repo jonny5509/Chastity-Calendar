@@ -78,15 +78,24 @@ class SessionHistory:
         # Keep one emoji per service/session so backfilled days look consistent.
         session_emojis = self.history.setdefault("_session_emojis", {})
 
-        async def add_span(service: str, start: date | None, session_id: str | None = None) -> None:
+        async def add_span(
+            service: str,
+            start: date | None,
+            session_id: str | None = None,
+            start_time: str | None = None,
+        ) -> None:
             if start is None or start > today:
                 return
             session_key = f"{service}:{session_id or start.isoformat()}"
             emoji = session_emojis.setdefault(session_key, random.choice(EMOJIS))
             day = start
             while day <= today:
-                record = additions.setdefault(day.isoformat(), {"emoji": emoji, "services": set()})
+                record = additions.setdefault(
+                    day.isoformat(), {"emoji": emoji, "services": set(), "start_times": set()}
+                )
                 record["services"].add(service)
+                if start_time:
+                    record["start_times"].add(f"{service}: {start_time}")
                 day += timedelta(days=1)
 
         # EmlaLock: status 1 is an active session; timestamps are Unix seconds.
@@ -102,7 +111,10 @@ class SessionHistory:
                 if int(session.get("status", 0)) == 1:
                     stamp = session.get("startdate") or session.get("created")
                     start = self._parse_date(stamp) or today
-                    await add_span("EmlaLock", start, str(session.get("id") or stamp or start.isoformat()))
+                    await add_span(
+                        "EmlaLock", start, str(session.get("id") or stamp or start.isoformat()),
+                        self._format_start_time(stamp),
+                    )
             except (aiohttp.ClientError, ValueError, TypeError, KeyError) as err:
                 _LOGGER.warning("Unable to refresh EmlaLock session status (%s)", type(err).__name__)
 
@@ -118,7 +130,10 @@ class SessionHistory:
                 if lock:
                     stamp = lock.get("startDate") or lock.get("startedAt") or lock.get("createdAt")
                     start = self._parse_date(stamp) or today
-                    await add_span("Chastify", start, str(lock.get("id") or stamp or start.isoformat()))
+                    await add_span(
+                        "Chastify", start, str(lock.get("id") or stamp or start.isoformat()),
+                        self._format_start_time(stamp),
+                    )
             except (aiohttp.ClientError, ValueError, TypeError, KeyError) as err:
                 _LOGGER.warning("Unable to refresh Chastify session status (%s)", type(err).__name__)
 
@@ -139,7 +154,10 @@ class SessionHistory:
                     if active and not lock.get("archived", False):
                         stamp = lock.get("startDate") or lock.get("startedAt") or lock.get("createdAt")
                         start = self._parse_date(stamp) or today
-                        await add_span("Chaster", start, str(lock.get("id") or stamp or start.isoformat()))
+                        await add_span(
+                            "Chaster", start, str(lock.get("id") or stamp or start.isoformat()),
+                            self._format_start_time(stamp),
+                        )
             except (aiohttp.ClientError, ValueError, TypeError, KeyError) as err:
                 _LOGGER.warning("Unable to refresh Chaster session status (%s)", type(err).__name__)
 
@@ -154,6 +172,11 @@ class SessionHistory:
             if merged != record.get("services", []):
                 record["services"] = merged
                 changed = True
+            existing_times = set(record.get("start_times", []))
+            merged_times = sorted(existing_times | incoming.get("start_times", set()))
+            if merged_times != record.get("start_times", []):
+                record["start_times"] = merged_times
+                changed = True
         # Persist the session-to-emoji mapping even if every date already existed.
         if session_emojis and not self.history.get("_session_emojis_saved"):
             self.history["_session_emojis_saved"] = True
@@ -161,6 +184,26 @@ class SessionHistory:
         if changed:
             await self.store.async_save(self.history)
             self.hass.bus.async_fire(f"{DOMAIN}_history_updated", {"entry_id": self.entry.entry_id})
+
+    @staticmethod
+    def _format_start_time(value: Any) -> str | None:
+        """Format a session's start clock time for calendar display."""
+        if value is None:
+            return None
+        try:
+            if isinstance(value, (int, float)):
+                parsed = datetime.fromtimestamp(value, dt_util.DEFAULT_TIME_ZONE)
+            elif isinstance(value, str):
+                parsed = dt_util.parse_datetime(value)
+                if parsed is None:
+                    parsed = datetime.fromtimestamp(float(value), dt_util.DEFAULT_TIME_ZONE)
+                elif parsed.tzinfo is None:
+                    parsed = parsed.replace(tzinfo=dt_util.DEFAULT_TIME_ZONE)
+            else:
+                return None
+            return parsed.strftime("%H:%M")
+        except (ValueError, TypeError, OSError, OverflowError):
+            return None
 
     @staticmethod
     def _parse_date(value: Any) -> date | None:
@@ -190,10 +233,17 @@ class SessionHistory:
                 continue
             if start <= event_date < end:
                 services = ", ".join(record.get("services", []))
+                start_times = ", ".join(record.get("start_times", []))
+                summary = f"{record.get('emoji', '✨')} Active session"
+                if start_times:
+                    summary = f"{summary} — started {start_times}"
+                description = f"Active session detected: {services}. This calendar record is permanent."
+                if start_times:
+                    description += f" Session start time(s): {start_times} (local time)."
                 result.append({
                     "start": event_date,
                     "end": event_date + timedelta(days=1),
-                    "summary": f"{record.get('emoji', '✨')} Active session",
-                    "description": f"Active session detected: {services}. This calendar record is permanent.",
+                    "summary": summary,
+                    "description": description,
                 })
         return result
