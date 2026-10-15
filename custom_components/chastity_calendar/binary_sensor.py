@@ -31,9 +31,13 @@ async def async_setup_entry(
 ) -> None:
     """Create one active-session binary sensor for each supported service."""
     history = hass.data[DOMAIN][entry.entry_id]
+    selected_services = entry.options.get(
+        CONF_SERVICES, entry.data.get(CONF_SERVICES, [])
+    )
     async_add_entities(
         ServiceActiveSessionSensor(hass, entry, history, service)
         for service in SERVICE_OPTIONS
+        if service in selected_services
     )
 
 

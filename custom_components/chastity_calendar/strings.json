@@ -3,9 +3,31 @@
     "step": {
       "user": {
         "title": "Chastity Calendar",
-        "description": "Choose none, one, or multiple services to track. Connecting services requires Home Assistant to have internet access. You can enter API credentials after setup.",
+        "description": "Choose none, one, or multiple services to track. Only services you select will get a configuration page. Connecting services requires Home Assistant to have internet access.",
         "data": {
           "services": "Services to track (select any combination, or none)"
+        }
+      },
+      "emlalock": {
+        "title": "Configure EmlaLock",
+        "description": "Enter your EmlaLock details. Leave them blank to configure this service later.",
+        "data": {
+          "emlalock_user_id": "EmlaLock user ID",
+          "emlalock_api_token": "EmlaLock API key"
+        }
+      },
+      "chaster": {
+        "title": "Configure Chaster",
+        "description": "Enter your Chaster API token. Leave it blank to configure this service later.",
+        "data": {
+          "chaster_api_token": "Chaster API token"
+        }
+      },
+      "chastify": {
+        "title": "Configure Chastify",
+        "description": "Enter your Chastify Developer API token. Leave it blank to configure this service later.",
+        "data": {
+          "chastify_dev_token": "Chastify user-wide Developer API token"
         }
       }
     },
@@ -17,15 +39,33 @@
     "step": {
       "init": {
         "title": "Calendar and service connections",
-        "description": "Select the services to poll and enter credentials for each selected service. Home Assistant needs internet access to contact their APIs; the calendar and saved history remain local.",
+        "description": "Select the services to poll. Only selected services will show a separate credentials page. Home Assistant needs internet access to contact their APIs; the calendar and saved history remain local.",
         "data": {
           "events": "Monthly events (JSON)",
           "services": "Services to track (select any combination, or none)",
-          "emlalock_user_id": "EmlaLock user ID",
-          "emlalock_api_token": "EmlaLock API key",
-          "chastify_dev_token": "Chastify user-wide Developer API token",
-          "chaster_api_token": "Chaster API token",
           "poll_minutes": "Polling interval (minutes)"
+        }
+      },
+      "emlalock": {
+        "title": "Configure EmlaLock",
+        "description": "Enter your EmlaLock details. Leave them blank to configure this service later.",
+        "data": {
+          "emlalock_user_id": "EmlaLock user ID",
+          "emlalock_api_token": "EmlaLock API key"
+        }
+      },
+      "chaster": {
+        "title": "Configure Chaster",
+        "description": "Enter your Chaster API token. Leave it blank to configure this service later.",
+        "data": {
+          "chaster_api_token": "Chaster API token"
+        }
+      },
+      "chastify": {
+        "title": "Configure Chastify",
+        "description": "Enter your Chastify Developer API token. Leave it blank to configure this service later.",
+        "data": {
+          "chastify_dev_token": "Chastify user-wide Developer API token"
         }
       }
     },
