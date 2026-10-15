@@ -163,8 +163,8 @@ class ChastityCalendarConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self._service_data.update({
                 CONF_OBEDIENCE_EXTENSION_ID: self._obedience_auth_result["id"],
                 CONF_OBEDIENCE_SECRET: self._obedience_auth_result["secret"],
-                CONF_OBEDIENCE_DAILY_HABIT_ID: user_input.get(CONF_OBEDIENCE_DAILY_HABIT_ID, "").strip(),
-                CONF_OBEDIENCE_YEARLY_HABIT_ID: user_input.get(CONF_OBEDIENCE_YEARLY_HABIT_ID, "").strip(),
+                CONF_OBEDIENCE_DAILY_HABIT_ID: str(user_input.get(CONF_OBEDIENCE_DAILY_HABIT_ID) or "").strip(),
+                CONF_OBEDIENCE_YEARLY_HABIT_ID: str(user_input.get(CONF_OBEDIENCE_YEARLY_HABIT_ID) or "").strip(),
                 "obedience_user_id": self._obedience_auth_result.get("uid", ""),
             })
             return self.async_create_entry(title="Chastity Calendar", data=self._service_data)
@@ -298,8 +298,8 @@ class ChastityCalendarOptionsFlow(config_entries.OptionsFlow):
             self._service_data.update({
                 CONF_OBEDIENCE_EXTENSION_ID: self._obedience_auth_result["id"],
                 CONF_OBEDIENCE_SECRET: self._obedience_auth_result["secret"],
-                CONF_OBEDIENCE_DAILY_HABIT_ID: user_input.get(CONF_OBEDIENCE_DAILY_HABIT_ID, "").strip(),
-                CONF_OBEDIENCE_YEARLY_HABIT_ID: user_input.get(CONF_OBEDIENCE_YEARLY_HABIT_ID, "").strip(),
+                CONF_OBEDIENCE_DAILY_HABIT_ID: str(user_input.get(CONF_OBEDIENCE_DAILY_HABIT_ID) or "").strip(),
+                CONF_OBEDIENCE_YEARLY_HABIT_ID: str(user_input.get(CONF_OBEDIENCE_YEARLY_HABIT_ID) or "").strip(),
                 "obedience_user_id": self._obedience_auth_result.get("uid", ""),
             })
             return self.async_create_entry(title="", data=self._service_data)
