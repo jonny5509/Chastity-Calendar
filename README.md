@@ -1,59 +1,31 @@
 # Chastity Calendar for Home Assistant
 
-A local Home Assistant custom integration that exposes a calendar of monthly chastity and abstinence challenge themes. It works offline and does not send calendar data anywhere.
+A Home Assistant custom integration with monthly theme events and optional daily session-history tracking for EmlaLock, Chastify, and Chaster.
 
 ## Features
-
-- Creates `calendar.chastity_calendar_monthly_themes`
-- Month-long all-day events, including Locktober in October
-- Includes community-style names for all 12 months
-- Uses Home Assistant's native calendar entity for dashboards and automations
-- No external API, account, or additional Python dependency
-
-The names are informal community-style suggestions, not an official or universally agreed calendar. Some names vary between communities; you can customize them.
+- Native Home Assistant calendar entity for dashboards and automations.
+- Optional API token setup for EmlaLock, Chastify, and Chaster.
+- Adds one all-day calendar event for each date a configured service reports an active session, decorated with a randomly selected 👑 💅 👠 💄 ✨ or 🎀 emoji.
+- Saves history in Home Assistant's local storage. Existing records are append-only and remain after a session ends, a token is removed, or Home Assistant restarts.
+- API polling interval configurable from 1 to 60 minutes (default 5).
+- Editable monthly theme list.
 
 ## Install with HACS
-
 1. In HACS, open **Integrations** → menu → **Custom repositories**.
 2. Add `https://github.com/jonny5509/calendar` and choose category **Integration**.
 3. Download **Chastity Calendar** and restart Home Assistant.
 4. Go to **Settings → Devices & services → Add integration** and search for **Chastity Calendar**.
 
-## Customize monthly events
+## Configure service tracking
+Open the integration's **Configure** page. Enter whichever credentials you want to use; all services are optional:
+- **EmlaLock:** user ID and API key.
+- **Chastify:** user-wide Developer API token with `locks:read` scope.
+- **Chaster:** Public API developer/access token with permission to read locks.
 
-Open the integration's **Configure** option. The monthly event list is editable as JSON. Each item needs a month number and title; description is optional.
+Credentials are stored in the Home Assistant config entry, sent only to the respective service, and are not written to the repository or included in logs. Never share your tokens. If a token is revoked or a service is unavailable, already-saved calendar history is retained. Polling detects sessions while the integration is running; historical days before setup can only be recovered if an API exposes them.
 
-```json
-[
-  {"month": 10, "title": "Locktober", "description": "Optional, consensual month-long challenge."},
-  {"month": 11, "title": "No Nut November", "description": "Optional abstinence challenge."},
-  {"month": 12, "title": "My December Theme", "description": "Your own description."}
-]
-```
-
-Months use numbers 1–12. Events are all-day and end at the first day of the following month (the end date is exclusive).
-
-## Example automation
-
-```yaml
-automation:
-  - alias: "Notify when Locktober begins"
-    triggers:
-      - trigger: calendar
-        event: start
-        entity_id: calendar.chastity_calendar_monthly_themes
-    conditions:
-      - condition: template
-        value_template: "{{ trigger.calendar_event.summary == 'Locktober' }}"
-    actions:
-      - action: persistent_notification.create
-        data:
-          title: "Monthly theme"
-          message: "Locktober starts today. Keep all activities consensual and safe."
-```
+## Monthly themes
+The monthly event list is editable as JSON. Each item needs a month number and title; description is optional. Months use numbers 1–12. Monthly events are all-day and end at the first day of the following month (exclusive).
 
 ## Notes
-
-- This is a starter integration and has not been validated against every Home Assistant release. Test it before relying on it for important automations.
-- Participation in any challenge is optional; agree boundaries in advance and prioritize comfort and safety.
-- Contributions and issue reports are welcome.
+API response formats and scopes can change. Check Home Assistant logs if a service token is rejected. The integration does not control locks or change session state; it only reads session status and stores calendar history.
