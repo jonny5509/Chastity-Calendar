@@ -82,12 +82,17 @@ class ObediencePoints:
             except (aiohttp.ClientError, TimeoutError, ValueError) as err:
                 _LOGGER.warning("Could not sync completion to Obedience: %s", err)
                 await self.store.async_save(self.data)
-        async_dispatcher_send(self.hass, f"{DOMAIN}_points_updated_{self.entry.entry_id}")
+                async_dispatcher_send(
+                    self.hass, f"{DOMAIN}_points_updated_{self.entry.entry_id}"
+                )
                 return
 
         if should_award_yearly:
             self.data["yearly_bonus_awarded"] = True
         await self.store.async_save(self.data)
+        async_dispatcher_send(
+            self.hass, f"{DOMAIN}_points_updated_{self.entry.entry_id}"
+        )
 
     async def _increment_habit(
         self, extension_id: str, secret: str, habit_id: str
