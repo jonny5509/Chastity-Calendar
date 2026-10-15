@@ -76,6 +76,51 @@ CAPTIONS = (
     "It's okay to reassess your goals as life changes.",
     "Progress should support your wellbeing, not come at its expense.",
     "Today's reminder: your comfort and wellbeing matter.",
+    # Short, punchy reminders
+    "Locked in. Focused. At peace.",
+    "One promise, one day at a time.",
+    "Steady mind, steady commitment.",
+    "Patience is part of the practice.",
+    "A small reminder of a meaningful choice.",
+    "Calm, committed, and carrying on.",
+    "Today, I choose consistency.",
+    "My commitment, my pace.",
+    # Light-hearted and funny
+    "Status update: still keeping my promise!",
+    "The lock says stay focused. Fair enough.",
+    "Another day, another check-in with my favourite calendar.",
+    "My plans are secure. Literally.",
+    "Today's forecast: a chance of patience.",
+    "The calendar checked in before my coffee did.",
+    "Commitment level: still showing up.",
+    "A little humour makes patience easier.",
+    # Calm, clarity and motivation
+    "Make space for calm and keep your priorities clear.",
+    "Let today's choices reflect what matters to you.",
+    "Quiet focus can be its own reward.",
+    "You can be committed without being hard on yourself.",
+    "Build the habit gently; let consistency do the work.",
+    "A clear intention can steady an ordinary day.",
+    "Choose patience over pressure.",
+    "Your progress is yours to define.",
+    # Long-term commitment
+    "A lasting promise is renewed through everyday choices.",
+    "Long-term commitment is built one ordinary day at a time.",
+    "Let time strengthen the intention behind your choice.",
+    "Today is another page in a commitment you chose.",
+    "A meaningful vow deserves thoughtful care.",
+    "Stay true to your intention, and kind to yourself.",
+    "The years are made of days like this one.",
+    "Commitment is a practice, not just a declaration.",
+    # Evening and bedtime reflection
+    "Let the day settle; take your calm into the night.",
+    "End today with gratitude for the promises you kept.",
+    "A quiet evening is a good time to reflect.",
+    "Rest matters too; tomorrow brings another day.",
+    "Set the day down and give yourself room to recharge.",
+    "Let patience be the last thought of the day.",
+    "Wind down, breathe deeply, and look after yourself.",
+    "Today's effort is enough; make space for rest.",
 )
 
 # These are deliberately separate and disabled by default. They only join the
@@ -89,6 +134,24 @@ RELATIONSHIP_CAPTIONS = (
     "Honesty makes a commitment stronger.",
     "A healthy dynamic begins with communication and consent.",
     "Commitment and self-respect can grow together.",
+    # Romantic and keyholder appreciation
+    "Your care makes this promise feel shared, not solitary.",
+    "I value the trust we build through honest conversations.",
+    "Thank you for treating my commitment with care.",
+    "The strongest bond leaves room for both voices to be heard.",
+    "I appreciate the patience and understanding we offer each other.",
+    "Our trust grows when we communicate openly.",
+    "I am grateful for the care behind our shared choices.",
+    "Affection and respect belong at the heart of every promise.",
+    # Playful anticipation
+    "A little anticipation gives today a playful spark.",
+    "Still smiling, still patient, still keeping my promise.",
+    "The waiting is easier when we can laugh together.",
+    "A playful reminder to keep the day interesting.",
+    "Patience can have a mischievous little grin.",
+    "A wink, a reminder, and back to my day.",
+    "Anticipation is sweeter when trust comes first.",
+    "A little teasing works best with kindness and clear communication.",
 )
 
 
