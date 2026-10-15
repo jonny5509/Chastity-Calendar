@@ -171,12 +171,12 @@ class SessionHistory:
                         active_locks.append(lock)
                 set_status("chaster", bool(active_locks))
                 for lock in active_locks:
-                        stamp = lock.get("startDate") or lock.get("startedAt") or lock.get("createdAt")
-                        start = self._parse_date(stamp) or today
-                        await add_span(
-                            "Chaster", start, str(lock.get("id") or stamp or start.isoformat()),
-                            self._format_start_time(stamp),
-                        )
+                    stamp = lock.get("startDate") or lock.get("startedAt") or lock.get("createdAt")
+                    start = self._parse_date(stamp) or today
+                    await add_span(
+                        "Chaster", start, str(lock.get("id") or stamp or start.isoformat()),
+                        self._format_start_time(stamp),
+                    )
             except (aiohttp.ClientError, ValueError, TypeError, KeyError) as err:
                 _LOGGER.warning("Unable to refresh Chaster session status (%s)", type(err).__name__)
 
