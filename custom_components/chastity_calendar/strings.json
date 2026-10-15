@@ -3,7 +3,10 @@
     "step": {
       "user": {
         "title": "Chastity Calendar",
-        "description": "Set up the local calendar. Service connections are optional and can be configured after setup."
+        "description": "Choose none, one, or multiple services to track. Connecting services requires Home Assistant to have internet access. You can enter API credentials after setup.",
+        "data": {
+          "services": "Services to track (select any combination, or none)"
+        }
       }
     },
     "abort": {
@@ -14,9 +17,10 @@
     "step": {
       "init": {
         "title": "Calendar and service connections",
-        "description": "API tokens are stored in Home Assistant. Leave a service blank to disable its polling.",
+        "description": "Select the services to poll and enter credentials for each selected service. Home Assistant needs internet access to contact their APIs; the calendar and saved history remain local.",
         "data": {
           "events": "Monthly events (JSON)",
+          "services": "Services to track (select any combination, or none)",
           "emlalock_user_id": "EmlaLock user ID",
           "emlalock_api_token": "EmlaLock API key",
           "chastify_dev_token": "Chastify user-wide Developer API token",
