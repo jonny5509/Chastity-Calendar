@@ -60,11 +60,13 @@ class ObediencePoints:
 
         completed_days.add(date_key)
         self.data["completed_days"] = sorted(completed_days)
-        self.data["total_points"] = len(completed_days) * DAILY_POINTS
         should_award_yearly = (
             len(completed_days) >= YEARLY_COMPLETIONS
             and not self.data.get("yearly_bonus_awarded", False)
         )
+        if should_award_yearly:
+            self.data["yearly_bonus_awarded"] = True
+        self.data["total_points"] = len(completed_days) * DAILY_POINTS
         if self.data.get("yearly_bonus_awarded", False):
             self.data["total_points"] += YEARLY_BONUS
 
@@ -89,8 +91,6 @@ class ObediencePoints:
                 )
                 return
 
-        if should_award_yearly:
-            self.data["yearly_bonus_awarded"] = True
         await self.store.async_save(self.data)
         async_dispatcher_send(
             self.hass, f"{DOMAIN}_points_updated_{self.entry.entry_id}"
