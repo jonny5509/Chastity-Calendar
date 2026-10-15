@@ -7,5 +7,5 @@
   "codeowners": ["@jonny5509"],
   "config_flow": true,
   "integration_type": "service",
-  "iot_class": "local_push"
+  "iot_class": "cloud_polling"
 }
