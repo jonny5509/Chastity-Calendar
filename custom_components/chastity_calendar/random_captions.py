@@ -295,7 +295,9 @@ async def async_setup_random_captions(hass: HomeAssistant, entry: ConfigEntry) -
             await store.async_save(state.copy())
 
     def tick(now: datetime) -> None:
-        hass.async_create_task(check_and_send(now))
+        # The callback may run outside the event-loop thread. Pass the coroutine
+        # function to Home Assistant so it creates/schedules the coroutine safely.
+        hass.add_job(check_and_send, now)
 
     ensure_schedule(dt_util.now())
     entry.async_on_unload(
