@@ -75,7 +75,9 @@ class SessionHistory:
 
     async def async_refresh(self) -> None:
         """Mark days from active sessions; preserve all previously recorded days."""
-        options = self.entry.options
+        # Initial setup stores credentials in entry.data; options stores overrides.
+        # Merge both so initial credentials are not silently ignored.
+        options = {**self.entry.data, **self.entry.options}
         today = dt_util.now().date()
         enabled_services = set(options.get(CONF_SERVICES, self.entry.data.get(CONF_SERVICES, [])))
         additions: dict[str, dict[str, Any]] = {}
@@ -278,9 +280,7 @@ class SessionHistory:
                 payload = await self._get_json(
                     "https://api.chaster.app/locks",
                     headers={"Authorization": f"Bearer {chaster_token}"},
-                    params={"status": "active"},
                 )
-                # GET /locks supports status=active; request active locks explicitly.
                 # Also tolerate wrapped responses for compatibility with proxies.
                 if isinstance(payload, list):
                     locks = payload
