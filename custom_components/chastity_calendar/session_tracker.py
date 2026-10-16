@@ -113,7 +113,18 @@ class SessionHistory:
                     "emoji": emoji,
                 },
             )
-            if not session_entry.get("start_time") and start_time:
+            # If an earlier refresh only knew today's date, replace that
+            # placeholder when a later response reveals the true session start.
+            try:
+                stored_start = date.fromisoformat(session_entry.get("start", start.isoformat()))
+            except (TypeError, ValueError):
+                stored_start = start
+            if start < stored_start:
+                session_entry["start"] = start.isoformat()
+                changed_session_start = True
+            else:
+                changed_session_start = False
+            if start_time and (not session_entry.get("start_time") or changed_session_start):
                 session_entry["start_time"] = start_time
             day = start
             while day <= today:
@@ -154,12 +165,25 @@ class SessionHistory:
                 active = int(session.get("status", 0)) == 1
                 set_status("emlalock", active)
                 if active:
-                    stamp = session.get("startdate") or session.get("created")
-                    start = self._parse_date(stamp) or today
-                    await add_span(
-                        "EmlaLock", start, str(session.get("id") or stamp or start.isoformat()),
-                        self._format_start_time(stamp),
+                    stamp = next(
+                        (session.get(key) for key in (
+                            "startdate", "startDate", "start_date", "startedAt",
+                            "started_at", "created", "createdAt", "created_at",
+                        ) if session.get(key) is not None),
+                        None,
                     )
+                    start = self._parse_date(stamp)
+                    if start is None:
+                        _LOGGER.warning(
+                            "EmlaLock returned an active session without a recognized "
+                            "start timestamp; history cannot be backfilled yet"
+                        )
+                    else:
+                        await add_span(
+                            "EmlaLock", start,
+                            str(session.get("chastitysessionid") or session.get("id") or start.isoformat()),
+                            self._format_start_time(stamp),
+                        )
             except (aiohttp.ClientError, ValueError, TypeError, KeyError) as err:
                 _LOGGER.warning("Unable to refresh EmlaLock session status (%s)", type(err).__name__)
 
@@ -171,39 +195,51 @@ class SessionHistory:
                     "https://chastify.net/api/apps/v1/session",
                     headers={"Authorization": f"Bearer {chastify_token}"},
                 )
-                lock = (payload or {}).get("lock") or {}
+                # The documented API normally returns a top-level "lock", but
+                # tolerate a data envelope or a lock object returned directly.
+                session_payload = payload if isinstance(payload, dict) else {}
+                if isinstance(session_payload.get("data"), dict):
+                    nested = session_payload["data"]
+                    if "lock" in nested or "lock" not in session_payload:
+                        session_payload = nested
+                lock = session_payload.get("lock") or {}
+                if not lock and (session_payload.get("_id") or session_payload.get("id")):
+                    lock = session_payload
                 set_status("chastify", bool(lock))
                 if lock:
-                    # Chastify API versions may use different timestamp key names.
-                    # Accept common camelCase and snake_case variants so the session
-                    # history can show the same local start time as EmlaLock.
+                    # Chastify's session API nests timing helpers under lockData in
+                    # some responses. Check both the lock and its timing metadata.
+                    lock_data = lock.get("lockData") or session_payload.get("lockData") or {}
+                    timestamp_keys = (
+                        "startDate", "startDateTime", "startTime", "startedAt",
+                        "startedOn", "started", "start_date", "start_date_time",
+                        "start_time", "started_at", "started_on", "startTimestamp",
+                        "start_timestamp", "sessionStart", "session_start",
+                        "createdAt", "created_at", "created", "lockedAt", "locked_at",
+                        "lockStartedAt", "lock_started_at", "since",
+                    )
                     stamp = next(
                         (
-                            lock.get(key)
-                            for key in (
-                                "startDate",
-                                "startedAt",
-                                "start_date",
-                                "started_at",
-                                "startTimestamp",
-                                "start_timestamp",
-                                "sessionStart",
-                                "session_start",
-                                "createdAt",
-                                "created_at",
-                                "created",
-                                "lockedAt",
-                                "locked_at",
-                            )
-                            if lock.get(key) is not None
+                            source.get(key)
+                            for source in (lock, lock_data, session_payload)
+                            for key in timestamp_keys
+                            if source.get(key) is not None
                         ),
                         None,
                     )
-                    start = self._parse_date(stamp) or today
-                    await add_span(
-                        "Chastify", start, str(lock.get("id") or stamp or start.isoformat()),
-                        self._format_start_time(stamp),
-                    )
+                    # The API's stable lock identifier is _id (not necessarily id).
+                    session_id = lock.get("_id") or lock.get("id") or stamp
+                    start = self._parse_date(stamp)
+                    if start is None:
+                        _LOGGER.warning(
+                            "Chastify returned an active lock without a recognized "
+                            "start timestamp; history cannot be backfilled yet"
+                        )
+                    else:
+                        await add_span(
+                            "Chastify", start, str(session_id or start.isoformat()),
+                            self._format_start_time(stamp),
+                        )
             except (aiohttp.ClientError, ValueError, TypeError, KeyError) as err:
                 _LOGGER.warning("Unable to refresh Chastify session status (%s)", type(err).__name__)
 
@@ -248,12 +284,26 @@ class SessionHistory:
                         active_locks.append(lock)
                 set_status("chaster", bool(active_locks))
                 for lock in active_locks:
-                    stamp = lock.get("startDate") or lock.get("startedAt") or lock.get("createdAt")
-                    start = self._parse_date(stamp) or today
-                    await add_span(
-                        "Chaster", start, str(lock.get("id") or lock.get("_id") or stamp or start.isoformat()),
-                        self._format_start_time(stamp),
+                    stamp = next(
+                        (lock.get(key) for key in (
+                            "startDate", "start_date", "startAt", "start_at",
+                            "startedAt", "started_at", "createdAt", "created_at",
+                            "created", "started", "startTime", "start_time",
+                        ) if lock.get(key) is not None),
+                        None,
                     )
+                    start = self._parse_date(stamp)
+                    if start is None:
+                        _LOGGER.warning(
+                            "Chaster returned an active lock without a recognized "
+                            "start timestamp; history cannot be backfilled yet"
+                        )
+                    else:
+                        await add_span(
+                            "Chaster", start,
+                            str(lock.get("id") or lock.get("_id") or start.isoformat()),
+                            self._format_start_time(stamp),
+                        )
             except (aiohttp.ClientError, ValueError, TypeError, KeyError) as err:
                 _LOGGER.warning("Unable to refresh Chaster session status (%s)", type(err).__name__)
 
