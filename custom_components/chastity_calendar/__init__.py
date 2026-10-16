@@ -29,6 +29,11 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up calendar, persistent session history, and monthly reminders."""
+    # Older installs may retain the original upstream config-entry title even
+    # after the manifest and config flow have been renamed.
+    if entry.title != "Chastity Calendar":
+        hass.config_entries.async_update_entry(entry, title="Chastity Calendar")
+
     from .session_tracker import SessionHistory
 
     history = SessionHistory(hass, entry)
