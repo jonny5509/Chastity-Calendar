@@ -16,7 +16,7 @@ A Home Assistant custom integration with monthly theme events and optional daily
 
 ## Install with HACS
 1. In HACS, open **Integrations** → menu → **Custom repositories**.
-2. Add `https://github.com/jonny5509/calendar` and choose category **Integration**.
+2. Add `https://github.com/jonny5509/Chastity-Calendar` and choose category **Integration**.
 3. Download **Chastity Calendar** and restart Home Assistant.
 4. Go to **Settings → Devices & services → Add integration** and search for **Chastity Calendar**.
 
