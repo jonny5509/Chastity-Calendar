@@ -83,7 +83,11 @@ class SessionHistory:
         session_emojis = self.history.setdefault("_session_emojis", {})
         daily_emojis = self.history.setdefault("_daily_emojis", {})
         session_entries = self.history.setdefault("_sessions", {})
-        session_entries_before = {key: dict(value) for key, value in session_entries.items()}
+        # Snapshot scalar metadata so updates are detected even when all daily records exist.
+        session_entries_before = {
+            key: {name: value.get(name) for name in ("service", "start", "start_time", "emoji")}
+            for key, value in session_entries.items()
+        }
 
         def emoji_for_day(day: date) -> str:
             """Choose and persist a daily emoji, avoiding repeats on adjacent days."""
@@ -274,8 +278,10 @@ class SessionHistory:
                 payload = await self._get_json(
                     "https://api.chaster.app/locks",
                     headers={"Authorization": f"Bearer {chaster_token}"},
+                    params={"status": "active"},
                 )
-                # The Public API may return a list directly or wrap locks in a result field.
+                # GET /locks supports status=active; request active locks explicitly.
+                # Also tolerate wrapped responses for compatibility with proxies.
                 if isinstance(payload, list):
                     locks = payload
                 elif isinstance(payload, dict):
