@@ -230,15 +230,39 @@ class SessionHistory:
                     # The API's stable lock identifier is _id (not necessarily id).
                     session_id = lock.get("_id") or lock.get("id") or stamp
                     start = self._parse_date(stamp)
+                    # Some Chastify responses expose elapsed lock duration rather
+                    # than an absolute start timestamp. Use it to recover the
+                    # start instant, but only when it is a valid non-negative number.
+                    if start is None:
+                        elapsed = lock_data.get("timeLockedSeconds")
+                        if elapsed is None:
+                            elapsed = session_payload.get("timeLockedSeconds")
+                        try:
+                            elapsed_seconds = float(elapsed)
+                            if elapsed_seconds >= 0:
+                                inferred_start = dt_util.now() - timedelta(seconds=elapsed_seconds)
+                                start = inferred_start.date()
+                                inferred_stamp = inferred_start.isoformat()
+                            else:
+                                inferred_stamp = None
+                        except (TypeError, ValueError, OverflowError):
+                            inferred_stamp = None
+                    else:
+                        inferred_stamp = None
                     if start is None:
                         _LOGGER.warning(
-                            "Chastify returned an active lock without a recognized "
-                            "start timestamp; history cannot be backfilled yet"
+                            "Chastify returned an active lock without a usable start "
+                            "timestamp or timeLockedSeconds; history cannot be backfilled"
                         )
                     else:
+                        start_time = (
+                            self._format_start_time(stamp)
+                            if stamp is not None
+                            else self._format_start_time(inferred_stamp)
+                        )
                         await add_span(
                             "Chastify", start, str(session_id or start.isoformat()),
-                            self._format_start_time(stamp),
+                            start_time,
                         )
             except (aiohttp.ClientError, ValueError, TypeError, KeyError) as err:
                 _LOGGER.warning("Unable to refresh Chastify session status (%s)", type(err).__name__)
@@ -349,7 +373,8 @@ class SessionHistory:
             return None
         try:
             if isinstance(value, (int, float)):
-                parsed = datetime.fromtimestamp(value, dt_util.DEFAULT_TIME_ZONE)
+                timestamp = value / 1000 if abs(value) >= 100_000_000_000 else value
+                parsed = datetime.fromtimestamp(timestamp, dt_util.DEFAULT_TIME_ZONE)
             elif isinstance(value, str):
                 parsed = dt_util.parse_datetime(value)
                 if parsed is None:
@@ -371,7 +396,9 @@ class SessionHistory:
             return None
         try:
             if isinstance(value, (int, float)):
-                return datetime.fromtimestamp(value, dt_util.DEFAULT_TIME_ZONE).date()
+                # APIs commonly use seconds, but tolerate millisecond Unix stamps.
+                timestamp = value / 1000 if abs(value) >= 100_000_000_000 else value
+                return datetime.fromtimestamp(timestamp, dt_util.DEFAULT_TIME_ZONE).date()
             if isinstance(value, str):
                 parsed = dt_util.parse_datetime(value)
                 if parsed is not None:
