@@ -174,12 +174,30 @@ class SessionHistory:
                 lock = (payload or {}).get("lock") or {}
                 set_status("chastify", bool(lock))
                 if lock:
-                    stamp = (
-                        lock.get("startDate")
-                        or lock.get("startedAt")
-                        or lock.get("start_date")
-                        or lock.get("createdAt")
-                        or lock.get("created")
+                    # Chastify API versions may use different timestamp key names.
+                    # Accept common camelCase and snake_case variants so the session
+                    # history can show the same local start time as EmlaLock.
+                    stamp = next(
+                        (
+                            lock.get(key)
+                            for key in (
+                                "startDate",
+                                "startedAt",
+                                "start_date",
+                                "started_at",
+                                "startTimestamp",
+                                "start_timestamp",
+                                "sessionStart",
+                                "session_start",
+                                "createdAt",
+                                "created_at",
+                                "created",
+                                "lockedAt",
+                                "locked_at",
+                            )
+                            if lock.get(key) is not None
+                        ),
+                        None,
                     )
                     start = self._parse_date(stamp) or today
                     await add_span(
