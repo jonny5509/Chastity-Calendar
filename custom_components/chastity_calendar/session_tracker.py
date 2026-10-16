@@ -81,8 +81,18 @@ class SessionHistory:
         additions: dict[str, dict[str, Any]] = {}
         # Keep one emoji per service/session so backfilled days look consistent.
         session_emojis = self.history.setdefault("_session_emojis", {})
+        daily_emojis = self.history.setdefault("_daily_emojis", {})
         session_entries = self.history.setdefault("_sessions", {})
         session_entries_before = {key: dict(value) for key, value in session_entries.items()}
+
+        def emoji_for_day(day: date) -> str:
+            """Choose and persist a daily emoji, avoiding repeats on adjacent days."""
+            day_key = day.isoformat()
+            if day_key not in daily_emojis:
+                previous = daily_emojis.get((day - timedelta(days=1)).isoformat())
+                choices = tuple(emoji for emoji in EMOJIS if emoji != previous) or EMOJIS
+                daily_emojis[day_key] = random.choice(choices)
+            return daily_emojis[day_key]
 
         async def add_span(
             service: str,
@@ -107,10 +117,17 @@ class SessionHistory:
                 session_entry["start_time"] = start_time
             day = start
             while day <= today:
+                daily_emoji = emoji_for_day(day)
                 record = additions.setdefault(
-                    day.isoformat(), {"emojis": set(), "services": set(), "start_times": set()}
+                    day.isoformat(),
+                    {
+                        "emojis": set(),
+                        "services": set(),
+                        "start_times": set(),
+                        "daily_emoji": daily_emoji,
+                    },
                 )
-                record["emojis"].add(emoji)
+                record["emojis"].add(daily_emoji)
                 record["services"].add(service)
                 if start_time:
                     record["start_times"].add(f"{service}: {start_time}")
@@ -224,7 +241,13 @@ class SessionHistory:
 
         changed = status_changed or session_entries != session_entries_before
         for day, incoming in additions.items():
-            record = self.history.setdefault(day, {"emoji": next(iter(incoming["emojis"]), "✨"), "services": []})
+            record = self.history.setdefault(
+                day, {"emoji": incoming.get("daily_emoji", "✨"), "services": []}
+            )
+            daily_emoji = incoming.get("daily_emoji", record.get("emoji", "✨"))
+            if record.get("emoji") != daily_emoji:
+                record["emoji"] = daily_emoji
+                changed = True
             existing_emojis = set(record.get("emojis", []))
             # Migrate the legacy single-emoji field when new session data arrives.
             if not existing_emojis and record.get("emoji"):
@@ -282,10 +305,14 @@ class SessionHistory:
             if isinstance(value, (int, float)):
                 return datetime.fromtimestamp(value, dt_util.DEFAULT_TIME_ZONE).date()
             if isinstance(value, str):
-                try:
-                    return dt_util.parse_datetime(value).date()
-                except (AttributeError, TypeError):
-                    return datetime.fromtimestamp(float(value), dt_util.DEFAULT_TIME_ZONE).date()
+                parsed = dt_util.parse_datetime(value)
+                if parsed is not None:
+                    if parsed.tzinfo is None:
+                        parsed = parsed.replace(tzinfo=dt_util.DEFAULT_TIME_ZONE)
+                    else:
+                        parsed = dt_util.as_local(parsed)
+                    return parsed.date()
+                return datetime.fromtimestamp(float(value), dt_util.DEFAULT_TIME_ZONE).date()
         except (ValueError, TypeError, OSError, OverflowError):
             return None
         return None
@@ -333,7 +360,11 @@ class SessionHistory:
                         continue
                     seen.add(session_key)
                     service = str(session.get("service", session_key.split(":", 1)[0]))
-                    emoji = str(session.get("emoji", "✨"))
+                    emoji = str(
+                        self.history.get("_daily_emojis", {}).get(
+                            event_date.isoformat(), record.get("emoji") or session.get("emoji", "✨")
+                        )
+                    )
                     start_time = session.get("start_time")
                     summary = f"{emoji} {service} — Active session"
                     if event_date == session_start:
@@ -354,7 +385,11 @@ class SessionHistory:
                     })
             else:
                 # Keep old saved records visible when they predate per-session metadata.
-                emojis = record.get("emojis") or [record.get("emoji", "✨")]
+                emojis = [
+                    self.history.get("_daily_emojis", {}).get(
+                        event_date.isoformat(), record.get("emoji", "✨")
+                    )
+                ]
                 service_text = ", ".join(str(service) for service in services) or "Unknown service"
                 start_times = ", ".join(record.get("start_times", []))
                 summary = f"{' '.join(emojis)} Active session — {service_text}"
