@@ -378,7 +378,10 @@ class SessionHistory:
             elif isinstance(value, str):
                 parsed = dt_util.parse_datetime(value)
                 if parsed is None:
-                    parsed = datetime.fromtimestamp(float(value), dt_util.DEFAULT_TIME_ZONE)
+                    timestamp = float(value)
+                    if abs(timestamp) >= 100_000_000_000:
+                        timestamp /= 1000
+                    parsed = datetime.fromtimestamp(timestamp, dt_util.DEFAULT_TIME_ZONE)
                 elif parsed.tzinfo is None:
                     parsed = parsed.replace(tzinfo=dt_util.DEFAULT_TIME_ZONE)
                 else:
@@ -407,7 +410,10 @@ class SessionHistory:
                     else:
                         parsed = dt_util.as_local(parsed)
                     return parsed.date()
-                return datetime.fromtimestamp(float(value), dt_util.DEFAULT_TIME_ZONE).date()
+                timestamp = float(value)
+                if abs(timestamp) >= 100_000_000_000:
+                    timestamp /= 1000
+                return datetime.fromtimestamp(timestamp, dt_util.DEFAULT_TIME_ZONE).date()
         except (ValueError, TypeError, OSError, OverflowError):
             return None
         return None
