@@ -113,7 +113,18 @@ class SessionHistory:
                     "emoji": emoji,
                 },
             )
-            if not session_entry.get("start_time") and start_time:
+            # If an earlier refresh only knew today's date, replace that
+            # placeholder when a later response reveals the true session start.
+            try:
+                stored_start = date.fromisoformat(session_entry.get("start", start.isoformat()))
+            except (TypeError, ValueError):
+                stored_start = start
+            if start < stored_start:
+                session_entry["start"] = start.isoformat()
+                changed_session_start = True
+            else:
+                changed_session_start = False
+            if start_time and (not session_entry.get("start_time") or changed_session_start):
                 session_entry["start_time"] = start_time
             day = start
             while day <= today:
@@ -154,12 +165,25 @@ class SessionHistory:
                 active = int(session.get("status", 0)) == 1
                 set_status("emlalock", active)
                 if active:
-                    stamp = session.get("startdate") or session.get("created")
-                    start = self._parse_date(stamp) or today
-                    await add_span(
-                        "EmlaLock", start, str(session.get("id") or stamp or start.isoformat()),
-                        self._format_start_time(stamp),
+                    stamp = next(
+                        (session.get(key) for key in (
+                            "startdate", "startDate", "start_date", "startedAt",
+                            "started_at", "created", "createdAt", "created_at",
+                        ) if session.get(key) is not None),
+                        None,
                     )
+                    start = self._parse_date(stamp)
+                    if start is None:
+                        _LOGGER.warning(
+                            "EmlaLock returned an active session without a recognized "
+                            "start timestamp; history cannot be backfilled yet"
+                        )
+                    else:
+                        await add_span(
+                            "EmlaLock", start,
+                            str(session.get("chastitysessionid") or session.get("id") or start.isoformat()),
+                            self._format_start_time(stamp),
+                        )
             except (aiohttp.ClientError, ValueError, TypeError, KeyError) as err:
                 _LOGGER.warning("Unable to refresh EmlaLock session status (%s)", type(err).__name__)
 
@@ -207,18 +231,15 @@ class SessionHistory:
                     session_id = lock.get("_id") or lock.get("id") or stamp
                     start = self._parse_date(stamp)
                     if start is None:
-                        # Keep today's active status visible, but make the missing
-                        # timestamp clear rather than silently implying we recovered
-                        # the earlier days of this session.
                         _LOGGER.warning(
                             "Chastify returned an active lock without a recognized "
-                            "start timestamp; history can only be recorded from today"
+                            "start timestamp; history cannot be backfilled yet"
                         )
-                        start = today
-                    await add_span(
-                        "Chastify", start, str(session_id or start.isoformat()),
-                        self._format_start_time(stamp),
-                    )
+                    else:
+                        await add_span(
+                            "Chastify", start, str(session_id or start.isoformat()),
+                            self._format_start_time(stamp),
+                        )
             except (aiohttp.ClientError, ValueError, TypeError, KeyError) as err:
                 _LOGGER.warning("Unable to refresh Chastify session status (%s)", type(err).__name__)
 
@@ -263,12 +284,26 @@ class SessionHistory:
                         active_locks.append(lock)
                 set_status("chaster", bool(active_locks))
                 for lock in active_locks:
-                    stamp = lock.get("startDate") or lock.get("startedAt") or lock.get("createdAt")
-                    start = self._parse_date(stamp) or today
-                    await add_span(
-                        "Chaster", start, str(lock.get("id") or lock.get("_id") or stamp or start.isoformat()),
-                        self._format_start_time(stamp),
+                    stamp = next(
+                        (lock.get(key) for key in (
+                            "startDate", "start_date", "startAt", "start_at",
+                            "startedAt", "started_at", "createdAt", "created_at",
+                            "created", "started", "startTime", "start_time",
+                        ) if lock.get(key) is not None),
+                        None,
                     )
+                    start = self._parse_date(stamp)
+                    if start is None:
+                        _LOGGER.warning(
+                            "Chaster returned an active lock without a recognized "
+                            "start timestamp; history cannot be backfilled yet"
+                        )
+                    else:
+                        await add_span(
+                            "Chaster", start,
+                            str(lock.get("id") or lock.get("_id") or start.isoformat()),
+                            self._format_start_time(stamp),
+                        )
             except (aiohttp.ClientError, ValueError, TypeError, KeyError) as err:
                 _LOGGER.warning("Unable to refresh Chaster session status (%s)", type(err).__name__)
 
