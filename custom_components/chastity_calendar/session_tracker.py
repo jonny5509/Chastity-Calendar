@@ -187,7 +187,8 @@ class SessionHistory:
                             "started_at", "created", "createdAt", "created_at",
                         ) if session.get(key) is not None),
                         None,
-                    )                    start = self._parse_date(stamp)
+                    )
+                    start = self._parse_date(stamp)
                     if start is None:
                         _LOGGER.warning(
                             "EmlaLock returned an active session without a recognized "
