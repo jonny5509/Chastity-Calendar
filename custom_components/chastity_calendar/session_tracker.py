@@ -367,7 +367,8 @@ class SessionHistory:
             existing = set(record.get("services", []))
             merged = sorted(existing | incoming["services"])
             if merged != record.get("services", []):
-                record["services"] = merged                changed = True
+                record["services"] = merged
+                changed = True
             existing_times = set(record.get("start_times", []))
             merged_times = sorted(existing_times | incoming.get("start_times", set()))
             if merged_times != record.get("start_times", []):
