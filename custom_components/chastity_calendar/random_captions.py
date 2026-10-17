@@ -254,7 +254,9 @@ async def async_setup_random_captions(hass: HomeAssistant, entry: ConfigEntry) -
         date_key = now.date().isoformat()
         if state["last_sent_date"] == date_key:
             return
-        if now.hour * 60 + now.minute != state["scheduled_minute"]:
+        # If Home Assistant was offline at the selected minute, deliver on the
+        # next tick rather than silently skipping the reminder until tomorrow.
+        if now.hour * 60 + now.minute < state["scheduled_minute"]:
             return
 
         current = {**entry.data, **entry.options}
