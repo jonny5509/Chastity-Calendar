@@ -92,11 +92,21 @@ class SessionHistory:
         }
 
         def emoji_for_day(day: date) -> str:
-            """Choose and persist a daily emoji, avoiding repeats on adjacent days."""
+            """Choose and persist a daily emoji, avoiding repeats until the pool cycles."""
             day_key = day.isoformat()
             if day_key not in daily_emojis:
-                previous = daily_emojis.get((day - timedelta(days=1)).isoformat())
-                choices = tuple(emoji for emoji in EMOJIS if emoji != previous) or EMOJIS
+                # Use each available emoji at most once in the rolling window.
+                # With six configured emojis, this prevents repeats across any
+                # six consecutive dates while keeping assignments stable in storage.
+                recent_days = (
+                    (day - timedelta(days=offset)).isoformat()
+                    for offset in range(1, len(EMOJIS))
+                )
+                recently_used = {daily_emojis[key] for key in recent_days if key in daily_emojis}
+                choices = tuple(emoji for emoji in EMOJIS if emoji not in recently_used)
+                if not choices:
+                    # Defensive fallback for old/corrupt history with an exhausted pool.
+                    choices = EMOJIS
                 daily_emojis[day_key] = random.choice(choices)
             return daily_emojis[day_key]
 
@@ -177,8 +187,7 @@ class SessionHistory:
                             "started_at", "created", "createdAt", "created_at",
                         ) if session.get(key) is not None),
                         None,
-                    )
-                    start = self._parse_date(stamp)
+                    )                    start = self._parse_date(stamp)
                     if start is None:
                         _LOGGER.warning(
                             "EmlaLock returned an active session without a recognized "
@@ -357,8 +366,7 @@ class SessionHistory:
             existing = set(record.get("services", []))
             merged = sorted(existing | incoming["services"])
             if merged != record.get("services", []):
-                record["services"] = merged
-                changed = True
+                record["services"] = merged                changed = True
             existing_times = set(record.get("start_times", []))
             merged_times = sorted(existing_times | incoming.get("start_times", set()))
             if merged_times != record.get("start_times", []):
