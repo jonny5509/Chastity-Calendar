@@ -84,6 +84,10 @@ class SessionHistory:
         # Keep one emoji per service/session so backfilled days look consistent.
         session_emojis = self.history.setdefault("_session_emojis", {})
         daily_emojis = self.history.setdefault("_daily_emojis", {})
+        # Store an emoji per session and calendar day so multiple events on the
+        # same date do not all render with the same daily emoji.
+        session_day_emojis = self.history.setdefault("_session_day_emojis", {})
+        session_day_emojis_before = dict(session_day_emojis)
         session_entries = self.history.setdefault("_sessions", {})
         # Snapshot scalar metadata so updates are detected even when all daily records exist.
         session_entries_before = {
@@ -145,6 +149,19 @@ class SessionHistory:
             day = start
             while day <= today:
                 daily_emoji = emoji_for_day(day)
+                session_day_key = f"{session_key}|{day.isoformat()}"
+                if session_day_key not in session_day_emojis:
+                    used_today = {
+                        value
+                        for key, value in session_day_emojis.items()
+                        if key.endswith(f"|{day.isoformat()}")
+                    }
+                    available = tuple(emoji for emoji in EMOJIS if emoji not in used_today)
+                    # Uniqueness is possible while the number of sessions that
+                    # day does not exceed the configured emoji pool.
+                    if not available:
+                        available = EMOJIS
+                    session_day_emojis[session_day_key] = random.choice(available)
                 record = additions.setdefault(
                     day.isoformat(),
                     {
@@ -347,7 +364,11 @@ class SessionHistory:
             except (aiohttp.ClientError, ValueError, TypeError, KeyError) as err:
                 _LOGGER.warning("Unable to refresh Chaster session status (%s)", type(err).__name__)
 
-        changed = status_changed or session_entries != session_entries_before
+        changed = (
+            status_changed
+            or session_entries != session_entries_before
+            or session_day_emojis != session_day_emojis_before
+        )
         for day, incoming in additions.items():
             record = self.history.setdefault(
                 day, {"emoji": incoming.get("daily_emoji", "✨"), "services": []}
@@ -478,8 +499,9 @@ class SessionHistory:
                     seen.add(session_key)
                     service = str(session.get("service", session_key.split(":", 1)[0]))
                     emoji = str(
-                        self.history.get("_daily_emojis", {}).get(
-                            event_date.isoformat(), record.get("emoji") or session.get("emoji", "✨")
+                        self.history.get("_session_day_emojis", {}).get(
+                            f"{session_key}|{event_date.isoformat()}",
+                            session.get("emoji") or record.get("emoji", "✨"),
                         )
                     )
                     start_time = session.get("start_time")
