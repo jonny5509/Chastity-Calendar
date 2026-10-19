@@ -124,7 +124,7 @@ class SessionHistory:
             return
         daily_time = self._daily_completion_time()
         if daily_time and now.strftime("%H:%M") >= daily_time:
-            self.hass.async_create_task(self.points.async_mark_date(now.date()))
+            self.hass.create_task(self.points.async_mark_date(now.date()))
 
     async def _get_json(self, url: str, *, headers=None, params=None):
         """Fetch JSON without logging credentials or response bodies."""
