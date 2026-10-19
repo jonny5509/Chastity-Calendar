@@ -47,6 +47,20 @@ class SessionHistory:
         self.history = await self.store.async_load() or {}
         self._session = aiohttp.ClientSession()
         await self.async_refresh()
+        # Recover points for every date already recorded as an active session day.
+        # This also catches gaps after Home Assistant was stopped while a session
+        # was active or ended before the next poll. The points tracker is idempotent.
+        if self.points:
+            for day_key, record in self.history.items():
+                if day_key.startswith("_") or not isinstance(record, dict):
+                    continue
+                if not record.get("services"):
+                    continue
+                try:
+                    completed_date = date.fromisoformat(day_key)
+                except ValueError:
+                    continue
+                await self.points.async_mark_date(completed_date)
         minutes = int(self.entry.options.get(CONF_POLL_MINUTES, 5))
         self._unsub = async_track_time_interval(
             self.hass, self._async_interval, timedelta(minutes=minutes)
