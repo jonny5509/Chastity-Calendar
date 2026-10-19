@@ -60,6 +60,12 @@ class SessionHistory:
                     completed_date = date.fromisoformat(day_key)
                 except ValueError:
                     continue
+                # Historical dates are complete. Today is only complete once
+                # the configured session-start clock time has been reached.
+                if completed_date > dt_util.now().date():
+                    continue
+                if not self._day_completion_reached(completed_date, dt_util.now()):
+                    continue
                 await self.points.async_mark_date(completed_date)
         minutes = int(self.entry.options.get(CONF_POLL_MINUTES, 5))
         self._unsub = async_track_time_interval(
@@ -86,13 +92,10 @@ class SessionHistory:
     async def _async_interval(self, _now) -> None:
         await self.async_refresh()
 
-    def _handle_daily_points_time(self, now: datetime) -> None:
-        """Award today's points at the most recently recorded session start time."""
-        if not self.points:
-            return
-        sessions = self.history.get("_sessions", {})
+    def _daily_completion_time(self) -> str | None:
+        """Return the latest session's configured daily completion clock time."""
         candidates = []
-        for session in sessions.values():
+        for session in self.history.get("_sessions", {}).values():
             try:
                 start = date.fromisoformat(session.get("start", ""))
             except (TypeError, ValueError):
@@ -101,9 +104,26 @@ class SessionHistory:
             if start_time:
                 candidates.append((start, str(start_time)))
         if not candidates:
+            return None
+        return max(candidates, key=lambda item: item[0])[1]
+
+    def _day_completion_reached(self, day: date, now: datetime) -> bool:
+        """Past dates are complete; today completes at the event's start clock time."""
+        today = now.date()
+        if day < today:
+            return True
+        if day > today:
+            return False
+        daily_time = self._daily_completion_time()
+        # Without a known event start time, don't infer that today's day is complete.
+        return bool(daily_time and now.strftime("%H:%M") >= daily_time)
+
+    def _handle_daily_points_time(self, now: datetime) -> None:
+        """Award today's points once the event-start completion boundary is reached."""
+        if not self.points:
             return
-        _, daily_time = max(candidates, key=lambda item: item[0])
-        if now.strftime("%H:%M") == daily_time:
+        daily_time = self._daily_completion_time()
+        if daily_time and now.strftime("%H:%M") >= daily_time:
             self.hass.async_create_task(self.points.async_mark_date(now.date()))
 
     async def _get_json(self, url: str, *, headers=None, params=None):
@@ -428,9 +448,11 @@ class SessionHistory:
                     )
                 except (KeyError, TypeError, ValueError):
                     continue
+                now = dt_util.now()
                 day = session_start
                 while day <= today:
-                    await self.points.async_mark_date(day)
+                    if self._day_completion_reached(day, now):
+                        await self.points.async_mark_date(day)
                     day += timedelta(days=1)
 
         changed = (
