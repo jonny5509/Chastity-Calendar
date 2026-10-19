@@ -8,7 +8,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
-from .obedience_points import DAILY_POINTS, YEARLY_BONUS
+from .obedience_points import DAILY_POINTS, YEARLY_BONUS, YEARLY_COMPLETIONS
 
 
 async def async_setup_entry(
@@ -40,10 +40,12 @@ class DailyCompletionPointsSensor(SensorEntity):
     @property
     def extra_state_attributes(self) -> dict:
         completed = self._tracker.data.get("completed_days", [])
+        settings = {**self._entry.data, **self._entry.options}
         return {
             "completed_days": len(completed),
-            "daily_points": DAILY_POINTS,
-            "yearly_bonus_points": YEARLY_BONUS,
+            "daily_points": int(settings.get("daily_points", DAILY_POINTS)),
+            "yearly_bonus_points": int(settings.get("yearly_bonus_points", YEARLY_BONUS)),
+            "yearly_completion_threshold": int(settings.get("yearly_completions", YEARLY_COMPLETIONS)),
             "yearly_bonus_awarded": bool(self._tracker.data.get("yearly_bonus_awarded", False)),
             "last_completed_date": completed[-1] if completed else None,
         }
