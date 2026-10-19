@@ -13,5 +13,5 @@
   "integration_type": "service",
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/jonny5509/Chastity-Calendar/issues",
-  "version": "1.1.7"
+  "version": "2.1.0"
 }
