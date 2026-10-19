@@ -70,7 +70,7 @@ The integration can send a reminder at the start of each month, using that month
 
 ## Daily completion points and optional Obedience sync
 
-The integration automatically awards 100 points at the most recently recorded session start time each day, using Home Assistant's local time. When a monitored session is detected changing from active to inactive, it also checks dates from that session's recorded start through the end date and awards any missing dates. Each date is counted only once, so scheduled awards and catch-up cannot double-count. This catch-up requires the integration to observe the active-to-inactive transition and have a recognized session start date.
+The integration automatically awards 100 points at the most recently recorded session start time each day, using Home Assistant's local time. When a monitored session is detected changing from active to inactive, it also checks dates from that session's recorded start through the end date and awards any missing dates. On Home Assistant startup or integration reload, it also checks saved calendar history and awards points for recorded active-session dates that are missing from the points tracker. Each date is counted only once, so scheduled awards and recovery cannot double-count. Startup recovery can only use dates present in saved history; it cannot infer days that were never recorded.
 
 The `sensor.chastity_calendar_completion_points` sensor reports the total points and completion details in Home Assistant and updates when points change. The yearly bonus is awarded after 365 completed dates in total (not necessarily consecutive).
 
