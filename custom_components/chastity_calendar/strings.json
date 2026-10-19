@@ -60,6 +60,9 @@
           "events": "Monthly events (JSON)",
           "services": "Services to track (select any combination, or none)",
           "poll_minutes": "Polling interval (minutes)",
+          "daily_points": "Points per completed day",
+          "yearly_bonus_points": "One-time yearly bonus points",
+          "yearly_completions": "Completed days required for yearly bonus",
           "monthly_notification_destination": "Monthly theme notification destination",
           "monthly_notification_targets": "Phone notification targets (select one or multiple phones)",
           "random_captions_enabled": "Enable daily random caption notifications",
@@ -109,6 +112,16 @@
     },
     "error": {
       "invalid_options": "Invalid events JSON or options. Check that months are unique values from 1 to 12 and each event has a title."
+    }
+  },
+  "services": {
+    "mark_day_complete": {
+      "name": "Mark day complete",
+      "description": "Manually award points for a date. Omit the date to use today."
+    },
+    "sync_missing_points": {
+      "name": "Check and retry missing Obedience syncs",
+      "description": "Check locally completed dates against the integration's sync ledger and retry missing daily habit increments."
     }
   }
 }
