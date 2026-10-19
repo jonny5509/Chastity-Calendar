@@ -12,7 +12,7 @@ A Home Assistant custom integration with monthly theme events and optional daily
 - Editable monthly theme list.
 - Monthly theme reminder on the first day of each month, using a message such as “Are you ready for No Nut November?”
 - Choose a Home Assistant persistent notification, one or more phone notification targets, or both.
-- Optional daily completion points: 100 points per completed date and a one-time 1,095-point bonus after 365 completed dates.
+- Configurable daily completion points, yearly bonus points, and completion threshold (defaults: 100, 1,095, and 365).
 
 ## Install with HACS
 1. In HACS, open **Integrations** → menu → **Custom repositories**.
@@ -70,15 +70,22 @@ The integration can send a reminder at the start of each month, using that month
 
 ## Daily completion points and optional Obedience sync
 
-The integration automatically awards 100 points at the most recently recorded session start time each day, using Home Assistant's local time. When a monitored session is detected changing from active to inactive, it also checks dates from that session's recorded start through the end date and awards any missing dates. On Home Assistant startup or integration reload, it also checks saved calendar history and awards points for recorded active-session dates that are missing from the points tracker. Each date is counted only once, so scheduled awards and recovery cannot double-count. Startup recovery can only use dates present in saved history; it cannot infer days that were never recorded.
+The integration awards points only when a day reaches the most recently recorded event/session start clock time, using Home Assistant's local time. Before that time, today's date is not treated as complete by automatic scheduling, startup recovery, or session-end catch-up. Past dates in saved session history can be recovered; dates never recorded in history cannot be inferred.
 
-The `sensor.chastity_calendar_completion_points` sensor reports the total points and completion details in Home Assistant and updates when points change. The yearly bonus is awarded after 365 completed dates in total (not necessarily consecutive).
+Configure the values from **Settings → Devices & services → Chastity Calendar → Configure**:
+- **Points per completed day** (default 100).
+- **One-time yearly bonus points** (default 1,095).
+- **Completed days required for yearly bonus** (default 365).
 
-You can still call the `chastity_calendar.mark_day_complete` Home Assistant service manually. The optional `date` field accepts a date such as `2026-10-15`; if omitted, the current Home Assistant local date is used.
+The `sensor.chastity_calendar_completion_points` sensor reports the local total, number of completed dates, configured point values, and whether the yearly bonus has been awarded. Dates are counted once. Changing the values recalculates the local total using the saved completion dates.
 
-When Obedience syncing is enabled and a daily habit ID is configured, each completed date increments that Obedience habit once. An optional yearly habit is incremented for the 365-day milestone. The integration updates the configured Obedience habits; it does not directly write to an account-wide Obedience points balance. Configure the rewards for those habits in Obedience itself.
+You can manually call `chastity_calendar.mark_day_complete` with an optional `date` such as `2026-10-15`. Manual calls explicitly mark the requested date and do not apply the automatic time boundary.
 
-Obedience is optional and has its own setup page. During first-time setup, enable **Configure Obedience habit syncing** to open that page. Later, open **Settings → Devices & services → Chastity Calendar → Configure**, enable Obedience syncing, and submit to open the separate page. Enable Obedience syncing in Home Assistant and choose **Open external website**. Sign in on Obedience's official site and approve the extension request; the browser redirects back to Home Assistant and the extension credentials are saved automatically. Home Assistant never asks for your Obedience account password. This requires a publicly reachable HTTPS Home Assistant URL (for example, a configured HTTPS external URL or reverse proxy). Create or choose eligible habits and copy their IDs: one for daily completion and optionally one for the 365-day milestone. Set the rewards on those habits in Obedience itself. Home Assistant's local tracker awards 100 points per completed date and a one-time 1,095-point bonus after 365 completed dates; the integration increments the configured Obedience habits rather than directly writing a points balance. Habits requiring photo proof or habits your account cannot edit may be rejected. You can leave either habit ID blank, or disable Obedience syncing, to keep points local to Home Assistant.
+When Obedience syncing is enabled, each completed date increments the configured daily habit once, and the yearly habit is incremented when the configured threshold is reached. The integration increments habits; it cannot directly write an arbitrary account-wide Obedience balance. **Set the daily and yearly Gain Points actions in Obedience to match the Home Assistant values**, otherwise the two totals will differ.
+
+To check and retry local completion dates that have not been recorded as synced to Obedience, call the `chastity_calendar.sync_missing_points` service. It creates a persistent notification with the sync check summary. This checks the integration's local sync ledger, not Obedience's account-wide points balance. A network timeout can make a remote result ambiguous, so review the Obedience history if you suspect a duplicate increment.
+
+Obedience is optional and has its own setup page. During first-time setup, enable **Configure Obedience habit syncing** to open that page. Later, open **Settings → Devices & services → Chastity Calendar → Configure**, enable Obedience syncing, and submit to open the separate page. Choose **Open external website**, sign in on Obedience's official site, and approve the extension request. Home Assistant never asks for your Obedience account password. This requires a publicly reachable HTTPS Home Assistant URL or Home Assistant Cloud Remote UI. You can leave habit IDs blank or disable Obedience syncing to keep points local.
 
 Example service call:
 
@@ -86,6 +93,12 @@ Example service call:
 action: chastity_calendar.mark_day_complete
 data:
   date: "2026-10-15"
+```
+
+Example sync-retry service call:
+
+```yaml
+action: chastity_calendar.sync_missing_points
 ```
 
 ## Notes

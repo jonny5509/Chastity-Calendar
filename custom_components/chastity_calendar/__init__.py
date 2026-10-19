@@ -59,6 +59,42 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             mark_day_complete,
             schema=vol.Schema({vol.Optional("date"): cv.date}),
         )
+    if not hass.services.has_service(DOMAIN, "sync_missing_points"):
+        async def sync_missing_points(_call):
+            """Retry Obedience habit increments missing from the local completion ledger."""
+            trackers = hass.data.get(DOMAIN, {}).get("points", {})
+            if not trackers:
+                message = "No Chastity Calendar point tracker is loaded."
+            else:
+                summaries = []
+                for point_tracker in trackers.values():
+                    result = await point_tracker.async_sync_missing_points()
+                    if not result["eligible"]:
+                        summaries.append("Obedience sync is disabled or no daily habit ID is configured.")
+                        continue
+                    summaries.append(
+                        f"Found {len(result['missing_dates'])} locally completed date(s) "
+                        f"not marked as synced; {result['synced']} synced and "
+                        f"{result['failed']} still missing after this run."
+                    )
+                message = "\n".join(summaries)
+            await hass.services.async_call(
+                "persistent_notification",
+                "create",
+                {
+                    "title": "Chastity Calendar — Obedience sync check",
+                    "message": message,
+                    "notification_id": f"{DOMAIN}_obedience_sync_check",
+                },
+                blocking=True,
+            )
+
+        hass.services.async_register(
+            DOMAIN,
+            "sync_missing_points",
+            sync_missing_points,
+            schema=vol.Schema({}),
+        )
     return True
 
 
