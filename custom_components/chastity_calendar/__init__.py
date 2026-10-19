@@ -74,7 +74,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                         continue
                     summaries.append(
                         f"Found {len(result['missing_dates'])} locally completed date(s) "
-                        f"not marked as synced; {result['synced']} synced in this run."
+                        f"not marked as synced; {result['synced']} synced and "
+                        f"{result['failed']} still missing after this run."
                     )
                 message = "\\n".join(summaries)
             await hass.services.async_call(
