@@ -144,18 +144,15 @@ class ObediencePoints:
             item for item in sorted(set(self.data.get("completed_days", [])))
             if item not in before
         ]
-        failed = 0
         for item in missing:
-            try:
-                await self.async_mark_date(date.fromisoformat(item))
-            except (aiohttp.ClientError, TimeoutError, ValueError):
-                failed += 1
+            await self.async_mark_date(date.fromisoformat(item))
         after = set(self.data.get("obedience_synced_days", []))
+        synced = len(after - before)
         return {
             "eligible": True,
             "missing_dates": missing,
-            "synced": len(after - before),
-            "failed": failed,
+            "synced": synced,
+            "failed": len(missing) - synced,
         }
 
     async def _increment_habit(
