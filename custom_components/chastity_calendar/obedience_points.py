@@ -13,6 +13,9 @@ from homeassistant.util import dt as dt_util
 
 from .const import (
     CONF_OBEDIENCE_DAILY_HABIT_ID,
+    CONF_DAILY_POINTS,
+    CONF_YEARLY_BONUS_POINTS,
+    CONF_YEARLY_COMPLETIONS,
     CONF_OBEDIENCE_EXTENSION_ID,
     CONF_OBEDIENCE_SECRET,
     CONF_OBEDIENCE_YEARLY_HABIT_ID,
@@ -52,6 +55,16 @@ class ObediencePoints:
 
         # Backward compatibility with the previous tracker format.
         self.data.setdefault("yearly_obedience_synced", False)
+        settings = {**self.entry.data, **self.entry.options}
+        daily_points = int(settings.get(CONF_DAILY_POINTS, DAILY_POINTS))
+        yearly_bonus = int(settings.get(CONF_YEARLY_BONUS_POINTS, YEARLY_BONUS))
+        yearly_completions = int(settings.get(CONF_YEARLY_COMPLETIONS, YEARLY_COMPLETIONS))
+        if len(self.data["completed_days"]) >= yearly_completions:
+            self.data["yearly_bonus_awarded"] = True
+        self.data["total_points"] = len(set(self.data["completed_days"])) * daily_points
+        if self.data.get("yearly_bonus_awarded", False):
+            self.data["total_points"] += yearly_bonus
+        await self.store.async_save(self.data)
 
     async def async_mark_complete(self, call: ServiceCall) -> None:
         """Record a date once and retry any Obedience sync still pending for it."""
@@ -68,17 +81,17 @@ class ObediencePoints:
         if is_new_completion:
             completed_days.add(date_key)
             self.data["completed_days"] = sorted(completed_days)
-            should_award_yearly = (
-                len(completed_days) >= YEARLY_COMPLETIONS
-                and not self.data.get("yearly_bonus_awarded", False)
-            )
-            if should_award_yearly:
-                self.data["yearly_bonus_awarded"] = True
-            self.data["total_points"] = len(completed_days) * DAILY_POINTS
-            if self.data.get("yearly_bonus_awarded", False):
-                self.data["total_points"] += YEARLY_BONUS
 
         options = {**self.entry.data, **self.entry.options}
+        daily_points = int(options.get(CONF_DAILY_POINTS, DAILY_POINTS))
+        yearly_bonus = int(options.get(CONF_YEARLY_BONUS_POINTS, YEARLY_BONUS))
+        yearly_completions = int(options.get(CONF_YEARLY_COMPLETIONS, YEARLY_COMPLETIONS))
+        if len(completed_days) >= yearly_completions and not self.data.get("yearly_bonus_awarded", False):
+            self.data["yearly_bonus_awarded"] = True
+        self.data["total_points"] = len(completed_days) * daily_points
+        if self.data.get("yearly_bonus_awarded", False):
+            self.data["total_points"] += yearly_bonus
+
         extension_id = options.get(CONF_OBEDIENCE_EXTENSION_ID)
         secret = options.get(CONF_OBEDIENCE_SECRET)
         daily_habit = options.get(CONF_OBEDIENCE_DAILY_HABIT_ID)
@@ -115,6 +128,35 @@ class ObediencePoints:
         async_dispatcher_send(
             self.hass, f"{DOMAIN}_points_updated_{self.entry.entry_id}"
         )
+
+    async def async_sync_missing_points(self) -> dict[str, Any]:
+        """Retry Obedience sync for locally completed dates not yet acknowledged."""
+        options = {**self.entry.data, **self.entry.options}
+        daily_habit = options.get(CONF_OBEDIENCE_DAILY_HABIT_ID)
+        enabled = options.get("obedience_enabled", bool(
+            options.get(CONF_OBEDIENCE_EXTENSION_ID) and options.get(CONF_OBEDIENCE_SECRET)
+        ))
+        if not enabled or not daily_habit:
+            return {"eligible": False, "missing_dates": [], "synced": 0, "failed": 0}
+
+        before = set(self.data.get("obedience_synced_days", []))
+        missing = [
+            item for item in sorted(set(self.data.get("completed_days", [])))
+            if item not in before
+        ]
+        failed = 0
+        for item in missing:
+            try:
+                await self.async_mark_date(date.fromisoformat(item))
+            except (aiohttp.ClientError, TimeoutError, ValueError):
+                failed += 1
+        after = set(self.data.get("obedience_synced_days", []))
+        return {
+            "eligible": True,
+            "missing_dates": missing,
+            "synced": len(after - before),
+            "failed": failed,
+        }
 
     async def _increment_habit(
         self, extension_id: str, secret: str, habit_id: str
