@@ -1,9 +1,7 @@
 # Chastity Calendar for Home Assistant
 
-[![Downloads](https://img.shields.io/github/downloads/jonny5509/Chastity-Calendar/total?label=downloads)](https://github.com/jonny5509/Chastity-Calendar/releases)
+[![Downloads](https://img.shields.io/github/downloads/jonny5509/Chastity-Calendar/total?label=downloads)](https://github.com/jonny5509/Chastity-Calendar/releases) [![Version](https://img.shields.io/github/v/release/jonny5509/Chastity-Calendar?display_name=tag&sort=semver)](https://github.com/jonny5509/Chastity-Calendar/releases/latest) [![HACS Compatible](https://img.shields.io/badge/HACS-Compatible-41BDF5.svg)](https://hacs.xyz/)
 
-[![Version](https://img.shields.io/github/v/release/jonny5509/Chastity-Calendar?display_name=tag&sort=semver)](https://github.com/jonny5509/Chastity-Calendar/releases/latest)
-[![HACS Compatible](https://img.shields.io/badge/HACS-Compatible-41BDF5.svg)](https://hacs.xyz/)
 
 A Home Assistant custom integration with monthly theme events and optional daily session-history tracking for EmlaLock, Chastify, and Chaster.
 
