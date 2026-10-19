@@ -38,3 +38,7 @@ DEFAULT_EVENTS = [
     {"month": 11, "title": "No Nut November", "description": "A widely known internet abstinence challenge."},
     {"month": 12, "title": "Denial December", "description": "A community-style denial theme. Customize to your preferences."},
 ]
+
+CONF_DAILY_POINTS = "daily_points"
+CONF_YEARLY_BONUS_POINTS = "yearly_bonus_points"
+CONF_YEARLY_COMPLETIONS = "yearly_completions"
