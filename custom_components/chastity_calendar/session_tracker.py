@@ -8,7 +8,7 @@ from typing import Any
 
 import aiohttp
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.event import async_track_time_interval
+from homeassistant.helpers.event import async_track_time_change, async_track_time_interval
 from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
@@ -30,14 +30,16 @@ STORAGE_VERSION = 1
 class SessionHistory:
     """Own API polling and append-only history storage."""
 
-    def __init__(self, hass: HomeAssistant, entry) -> None:
+    def __init__(self, hass: HomeAssistant, entry, points=None) -> None:
         self.hass = hass
         self.entry = entry
+        self.points = points
         self.store = Store(hass, STORAGE_VERSION, f"{DOMAIN}_{entry.entry_id}_history")
         self.history: dict[str, dict[str, Any]] = {}
         # None means no successful status check yet; True/False means active/inactive.
         self.active_sessions: dict[str, bool] = {}
         self._unsub = None
+        self._unsub_daily_points = None
         self._session: aiohttp.ClientSession | None = None
 
     async def async_start(self) -> None:
@@ -45,9 +47,28 @@ class SessionHistory:
         self.history = await self.store.async_load() or {}
         self._session = aiohttp.ClientSession()
         await self.async_refresh()
+        # Recover points for every date already recorded as an active session day.
+        # This also catches gaps after Home Assistant was stopped while a session
+        # was active or ended before the next poll. The points tracker is idempotent.
+        if self.points:
+            for day_key, record in self.history.items():
+                if day_key.startswith("_") or not isinstance(record, dict):
+                    continue
+                if not record.get("services"):
+                    continue
+                try:
+                    completed_date = date.fromisoformat(day_key)
+                except ValueError:
+                    continue
+                await self.points.async_mark_date(completed_date)
         minutes = int(self.entry.options.get(CONF_POLL_MINUTES, 5))
         self._unsub = async_track_time_interval(
             self.hass, self._async_interval, timedelta(minutes=minutes)
+        )
+        # Check the configured session-start clock time every minute without
+        # increasing the frequency of external API polling.
+        self._unsub_daily_points = async_track_time_change(
+            self.hass, self._handle_daily_points_time, minute=range(60), second=0
         )
 
     async def async_stop(self) -> None:
@@ -55,12 +76,35 @@ class SessionHistory:
         if self._unsub:
             self._unsub()
             self._unsub = None
+        if self._unsub_daily_points:
+            self._unsub_daily_points()
+            self._unsub_daily_points = None
         if self._session:
             await self._session.close()
             self._session = None
 
     async def _async_interval(self, _now) -> None:
         await self.async_refresh()
+
+    def _handle_daily_points_time(self, now: datetime) -> None:
+        """Award today's points at the most recently recorded session start time."""
+        if not self.points:
+            return
+        sessions = self.history.get("_sessions", {})
+        candidates = []
+        for session in sessions.values():
+            try:
+                start = date.fromisoformat(session.get("start", ""))
+            except (TypeError, ValueError):
+                continue
+            start_time = session.get("start_time")
+            if start_time:
+                candidates.append((start, str(start_time)))
+        if not candidates:
+            return
+        _, daily_time = max(candidates, key=lambda item: item[0])
+        if now.strftime("%H:%M") == daily_time:
+            self.hass.async_create_task(self.points.async_mark_date(now.date()))
 
     async def _get_json(self, url: str, *, headers=None, params=None):
         """Fetch JSON without logging credentials or response bodies."""
@@ -79,6 +123,7 @@ class SessionHistory:
         # Merge both so initial credentials are not silently ignored.
         options = {**self.entry.data, **self.entry.options}
         today = dt_util.now().date()
+        previous_active = dict(self.active_sessions)
         enabled_services = set(options.get(CONF_SERVICES, self.entry.data.get(CONF_SERVICES, [])))
         additions: dict[str, dict[str, Any]] = {}
         # Keep one emoji per service/session so backfilled days look consistent.
@@ -363,6 +408,30 @@ class SessionHistory:
                         )
             except (aiohttp.ClientError, ValueError, TypeError, KeyError) as err:
                 _LOGGER.warning("Unable to refresh Chaster session status (%s)", type(err).__name__)
+
+        # When a previously active service ends, backfill every date from
+        # that session's recorded start through today. The points tracker makes
+        # this idempotent, so scheduled awards and catch-up cannot double-count.
+        if self.points:
+            for service, was_active in previous_active.items():
+                if not was_active or self.active_sessions.get(service) is not False:
+                    continue
+                matching = [
+                    session for session in session_entries.values()
+                    if str(session.get("service", "")).lower() == service.lower()
+                ]
+                if not matching:
+                    continue
+                try:
+                    session_start = max(
+                        (date.fromisoformat(item["start"]) for item in matching)
+                    )
+                except (KeyError, TypeError, ValueError):
+                    continue
+                day = session_start
+                while day <= today:
+                    await self.points.async_mark_date(day)
+                    day += timedelta(days=1)
 
         changed = (
             status_changed

@@ -36,8 +36,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     from .session_tracker import SessionHistory
 
-    history = SessionHistory(hass, entry)
     points = ObediencePoints(hass, entry)
+    history = SessionHistory(hass, entry, points)
     await points.async_load()
     domain_data = hass.data.setdefault(DOMAIN, {})
     domain_data[entry.entry_id] = history

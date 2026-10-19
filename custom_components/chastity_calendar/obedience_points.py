@@ -57,6 +57,10 @@ class ObediencePoints:
         """Record a date once and retry any Obedience sync still pending for it."""
         raw_date = call.data.get("date")
         completed_date = raw_date if isinstance(raw_date, date) else dt_util.now().date()
+        await self.async_mark_date(completed_date)
+
+    async def async_mark_date(self, completed_date: date) -> None:
+        """Record a specific date once, with the same persistence and sync behavior."""
         date_key = completed_date.isoformat()
 
         completed_days = set(self.data["completed_days"])
