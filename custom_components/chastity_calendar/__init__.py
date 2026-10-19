@@ -77,7 +77,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                         f"not marked as synced; {result['synced']} synced and "
                         f"{result['failed']} still missing after this run."
                     )
-                message = "\\n".join(summaries)
+                message = "\n".join(summaries)
             await hass.services.async_call(
                 "persistent_notification",
                 "create",
