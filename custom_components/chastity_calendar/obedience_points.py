@@ -133,10 +133,10 @@ class ObediencePoints:
         """Retry Obedience sync for locally completed dates not yet acknowledged."""
         options = {**self.entry.data, **self.entry.options}
         daily_habit = options.get(CONF_OBEDIENCE_DAILY_HABIT_ID)
-        enabled = options.get("obedience_enabled", bool(
-            options.get(CONF_OBEDIENCE_EXTENSION_ID) and options.get(CONF_OBEDIENCE_SECRET)
-        ))
-        if not enabled or not daily_habit:
+        extension_id = options.get(CONF_OBEDIENCE_EXTENSION_ID)
+        secret = options.get(CONF_OBEDIENCE_SECRET)
+        enabled = options.get("obedience_enabled", bool(extension_id and secret))
+        if not enabled or not daily_habit or not extension_id or not secret:
             return {"eligible": False, "missing_dates": [], "synced": 0, "failed": 0}
 
         before = set(self.data.get("obedience_synced_days", []))
