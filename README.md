@@ -23,6 +23,21 @@ A Home Assistant custom integration with monthly theme events and optional daily
 3. Download **Chastity Calendar** and restart Home Assistant.
 4. Go to **Settings → Devices & services → Add integration** and search for **Chastity Calendar**.
 
+
+## Troubleshooting installation
+
+If Home Assistant logs **`Integration 'chastity_calendar' not found`** or the integration appears as **Not loaded**, Home Assistant cannot find the integration files in its active configuration directory. The manifest exists in this repository, but downloading the repository on GitHub does not install it into Home Assistant.
+
+1. Confirm that the active Home Assistant configuration directory contains `custom_components/chastity_calendar/manifest.json`. For the common Home Assistant OS installation, this is `/config/custom_components/chastity_calendar/manifest.json`.
+2. Open that manifest and confirm its `domain` is `chastity_calendar`. The folder must be named exactly `chastity_calendar`; avoid an extra nested folder such as `custom_components/Chastity-Calendar/custom_components/chastity_calendar`.
+3. If the folder or manifest is missing, install/download **Chastity Calendar** from HACS (using this repository as an Integration custom repository if needed), then restart Home Assistant. Reloading the integration alone cannot fix missing files.
+4. After restarting, open **Settings → Devices & services → Add integration**, search for **Chastity Calendar**, and add it if it is not already configured.
+5. If the manifest is present but the error remains, check the Home Assistant startup logs for Python import errors and confirm that you edited the configuration directory used by the running Home Assistant instance.
+
+The separate log message **`Integration 'session_watch_calendar' not found`** refers to a different domain. This repository does not provide an integration named `session_watch_calendar`. Check for a leftover `custom_components/session_watch_calendar` directory or references to that old integration in your own dashboards, automations, scripts, or configuration. Do not delete another integration's files unless you have confirmed they belong to an unused installation.
+
+When reporting an installation problem, include the Home Assistant version and the first relevant traceback from startup logs, but remove API tokens, authorization secrets, and other credentials.
+
 ## Configure service tracking
 During initial setup, select none, one, or multiple services to track. Home Assistant then shows a separate configuration page for each selected service only. You can change the selection later from the integration's **Configure** page; the configuration flow again shows credential pages only for the selected services. Enter credentials for each selected service; all services are optional:
 - **EmlaLock:** user ID and API key.
