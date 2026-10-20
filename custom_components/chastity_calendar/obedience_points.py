@@ -130,29 +130,67 @@ class ObediencePoints:
         )
 
     async def async_sync_missing_points(self) -> dict[str, Any]:
-        """Retry Obedience sync for locally completed dates not yet acknowledged."""
+        """Retry pending daily and yearly Obedience habit increments."""
         options = {**self.entry.data, **self.entry.options}
         daily_habit = options.get(CONF_OBEDIENCE_DAILY_HABIT_ID)
+        yearly_habit = options.get(CONF_OBEDIENCE_YEARLY_HABIT_ID)
         extension_id = options.get(CONF_OBEDIENCE_EXTENSION_ID)
         secret = options.get(CONF_OBEDIENCE_SECRET)
         enabled = options.get("obedience_enabled", bool(extension_id and secret))
-        if not enabled or not daily_habit or not extension_id or not secret:
-            return {"eligible": False, "missing_dates": [], "synced": 0, "failed": 0}
+        if (
+            not enabled
+            or not extension_id
+            or not secret
+            or not (daily_habit or yearly_habit)
+        ):
+            return {
+                "eligible": False,
+                "missing_dates": [],
+                "synced": 0,
+                "failed": 0,
+                "yearly_bonus_synced": bool(self.data.get("yearly_obedience_synced", False)),
+                "yearly_bonus_pending": False,
+            }
 
         before = set(self.data.get("obedience_synced_days", []))
-        missing = [
-            item for item in sorted(set(self.data.get("completed_days", [])))
-            if item not in before
-        ]
+        completed_days = sorted(set(self.data.get("completed_days", [])))
+        missing = (
+            [item for item in completed_days if item not in before]
+            if daily_habit
+            else []
+        )
+
+        # Reuse the idempotent date handler for daily retries. It also retries
+        # the yearly milestone if that threshold has been reached.
         for item in missing:
             await self.async_mark_date(date.fromisoformat(item))
+
+        # A yearly-only configuration has no daily dates to iterate. Trigger the
+        # same handler with an already-completed date so no new completion is added.
+        if (
+            yearly_habit
+            and self.data.get("yearly_bonus_awarded", False)
+            and not self.data.get("yearly_obedience_synced", False)
+            and completed_days
+        ):
+            await self.async_mark_date(date.fromisoformat(completed_days[-1]))
+
         after = set(self.data.get("obedience_synced_days", []))
         synced = len(after - before)
+        failed = len(missing) - synced
+        yearly_synced = bool(self.data.get("yearly_obedience_synced", False))
+        yearly_pending = bool(
+            yearly_habit
+            and self.data.get("yearly_bonus_awarded", False)
+            and not yearly_synced
+        )
         return {
             "eligible": True,
             "missing_dates": missing,
             "synced": synced,
-            "failed": len(missing) - synced,
+            "failed": failed,
+            "yearly_bonus_synced": yearly_synced,
+            "yearly_bonus_pending": yearly_pending,
         }
 
     async def _increment_habit(
