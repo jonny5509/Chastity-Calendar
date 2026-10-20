@@ -156,7 +156,7 @@ class SessionHistory:
         session_entries = self.history.setdefault("_sessions", {})
         # Snapshot scalar metadata so updates are detected even when all daily records exist.
         session_entries_before = {
-            key: {name: value.get(name) for name in ("service", "start", "start_time", "emoji")}
+            key: {name: value.get(name) for name in ("service", "start", "start_time", "end_date", "end_time", "emoji")}
             for key, value in session_entries.items()
         }
 
@@ -429,6 +429,25 @@ class SessionHistory:
             except (aiohttp.ClientError, ValueError, TypeError, KeyError) as err:
                 _LOGGER.warning("Unable to refresh Chaster session status (%s)", type(err).__name__)
 
+        # Record a local end timestamp when polling detects that a session ended.
+        # EmlaLock does not consistently expose a historical end timestamp, so this
+        # is the first observed inactive time and can lag the actual end by one poll.
+        for service, was_active in previous_active.items():
+            if not was_active or self.active_sessions.get(service) is not False:
+                continue
+            matching = [
+                item for item in session_entries.values()
+                if str(item.get("service", "")).lower() == service.lower()
+            ]
+            if not matching:
+                continue
+            latest = max(matching, key=lambda item: item.get("start", ""))
+            if not latest.get("end_date"):
+                ended_at = dt_util.now()
+                latest["end_date"] = ended_at.date().isoformat()
+                latest["end_time"] = ended_at.strftime("%H:%M")
+                status_changed = True
+
         # When a previously active service ends, backfill every date from
         # that session's recorded start through today. The points tracker makes
         # this idempotent, so scheduled awards and catch-up cannot double-count.
@@ -607,6 +626,12 @@ class SessionHistory:
                     )
                     if start_time:
                         description += f" Local start time: {start_time}."
+                    end_date = session.get("end_date")
+                    end_time = session.get("end_time")
+                    if end_date:
+                        description += f" Session end date: {end_date}."
+                    if end_time:
+                        description += f" Local end time: {end_time}."
                     result.append({
                         "start": event_date,
                         "end": event_date + timedelta(days=1),
