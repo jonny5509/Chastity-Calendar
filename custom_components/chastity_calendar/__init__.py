@@ -70,13 +70,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 for point_tracker in trackers.values():
                     result = await point_tracker.async_sync_missing_points()
                     if not result["eligible"]:
-                        summaries.append("Obedience sync is disabled or no daily habit ID is configured.")
+                        summaries.append(
+                            "Obedience sync is disabled, credentials are missing, or no daily/yearly habit ID is configured."
+                        )
                         continue
-                    summaries.append(
-                        f"Found {len(result['missing_dates'])} locally completed date(s) "
-                        f"not marked as synced; {result['synced']} synced and "
-                        f"{result['failed']} still missing after this run."
+                    summary = (
+                        f"Daily sync: {len(result['missing_dates'])} pending date(s) checked; "
+                        f"{result['synced']} synced and {result['failed']} still pending."
                     )
+                    if result.get("yearly_bonus_pending"):
+                        summary += " The yearly bonus is still pending; check the yearly habit and API access."
+                    elif result.get("yearly_bonus_synced"):
+                        summary += " The yearly bonus has been marked as synced."
+                    summaries.append(summary)
                 message = "\n".join(summaries)
             await hass.services.async_call(
                 "persistent_notification",
