@@ -23,6 +23,26 @@ jobs:
           cd dist
           zip -r ../calendar.zip chastity_calendar
           cd ..
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from zipfile import ZipFile
+
+          with ZipFile("calendar.zip") as archive:
+              names = set(archive.namelist())
+              manifest_path = "chastity_calendar/manifest.json"
+              if manifest_path not in names:
+                  raise SystemExit(f"Release ZIP is missing {manifest_path}")
+              manifest = json.loads(archive.read(manifest_path))
+              if manifest.get("domain") != "chastity_calendar":
+                  raise SystemExit("Release ZIP manifest domain does not match the integration folder")
+              if not any(name.startswith("chastity_calendar/") and name.endswith(".py") for name in names):
+                  raise SystemExit("Release ZIP does not contain integration Python files")
+          hacs = json.loads(Path("hacs.json").read_text(encoding="utf-8"))
+          if hacs.get("filename") != "calendar.zip":
+              raise SystemExit("hacs.json filename must match the release ZIP name")
+          print("Release ZIP layout and HACS filename are valid.")
+          PY
           sha256sum calendar.zip > calendar.zip.sha256
 
       - name: Upload ZIP and checksum to release
