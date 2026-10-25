@@ -60,11 +60,15 @@ class SessionHistory:
                     completed_date = date.fromisoformat(day_key)
                 except ValueError:
                     continue
-                # Historical dates are complete. Today is only complete once
-                # the configured session-start clock time has been reached.
-                if completed_date > dt_util.now().date():
+                now = dt_util.now()
+                # Past dates recorded from a session remain eligible for recovery.
+                # Today, however, must have a currently active session: a stale
+                # calendar record or stored start time alone must not award points.
+                if completed_date > now.date():
                     continue
-                if not self._day_completion_reached(completed_date, dt_util.now()):
+                if completed_date == now.date() and not any(self.active_sessions.values()):
+                    continue
+                if not self._day_completion_reached(completed_date, now):
                     continue
                 await self.points.async_mark_date(completed_date)
         minutes = int(self.entry.options.get(CONF_POLL_MINUTES, 5))
@@ -119,8 +123,8 @@ class SessionHistory:
         return bool(daily_time and now.strftime("%H:%M") >= daily_time)
 
     def _handle_daily_points_time(self, now: datetime) -> None:
-        """Award today's points once the event-start completion boundary is reached."""
-        if not self.points:
+        """Award today's points only during an active session and after its daily boundary."""
+        if not self.points or not any(self.active_sessions.values()):
             return
         daily_time = self._daily_completion_time()
         if daily_time and now.strftime("%H:%M") >= daily_time:
