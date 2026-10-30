@@ -367,7 +367,13 @@ class SessionHistory:
                             start_time,
                         )
             except (aiohttp.ClientError, ValueError, TypeError, KeyError) as err:
-                _LOGGER.warning("Unable to refresh Chastify session status (%s)", type(err).__name__)
+                _LOGGER.warning(
+                    "Unable to refresh Chastify session status: %s "
+                    "(HTTP status=%s, message=%s)",
+                    type(err).__name__,
+                    getattr(err, "status", None),
+                    getattr(err, "message", str(err)),
+                )
 
         # Chaster's public API returns the user's locks; only active, non-archived locks count.
         chaster_token = options.get(CONF_CHASTER_API_TOKEN)
