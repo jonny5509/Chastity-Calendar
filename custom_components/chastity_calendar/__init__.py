@@ -42,6 +42,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     await _async_setup_monthly_notification(hass, entry)
     await async_setup_random_captions(hass, entry)
+
     def get_instance_tracker(call):
         """Resolve one tracker by setup name; never mix account data."""
         trackers = hass.data.get(DOMAIN, {}).get("points", {})
