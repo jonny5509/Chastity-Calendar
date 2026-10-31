@@ -47,7 +47,7 @@ async def async_setup_entry(
 class ServiceActiveSessionSensor(BinarySensorEntity):
     """Represent the active-session status of one service."""
 
-    _attr_has_entity_name = True
+    _attr_has_entity_name = False
     _attr_device_class = None
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry, history, service: str) -> None:
@@ -55,7 +55,7 @@ class ServiceActiveSessionSensor(BinarySensorEntity):
         self._entry = entry
         self._history = history
         self._service = service
-        self._attr_name = f"{SERVICE_OPTIONS[service]} active session"
+        self._attr_name = f"{entry.title} — {SERVICE_OPTIONS[service]} active session"
         self._attr_unique_id = f"{entry.entry_id}_{service}_active_session"
         self._attr_icon = "mdi:lock-check"
 
@@ -96,13 +96,14 @@ class ServiceActiveSessionSensor(BinarySensorEntity):
 class ObedienceConnectionStatusSensor(BinarySensorEntity):
     """Show whether Obedience authorization is configured in Home Assistant."""
 
-    _attr_has_entity_name = True
+    _attr_has_entity_name = False
     _attr_name = "Obedience authorization"
-    _attr_unique_id = "obedience_authorization_status"
     _attr_icon = "mdi:cloud-check"
 
     def __init__(self, entry: ConfigEntry) -> None:
         self._entry = entry
+        self._attr_name = f"{entry.title} — Obedience authorization"
+        self._attr_unique_id = f"{entry.entry_id}_obedience_authorization_status"
 
     @property
     def is_on(self) -> bool:

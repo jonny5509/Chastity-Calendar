@@ -22,8 +22,7 @@ async def async_setup_entry(
 class DailyCompletionPointsSensor(SensorEntity):
     """Report the locally tracked points total and completion count."""
 
-    _attr_has_entity_name = True
-    _attr_name = "Completion points"
+    _attr_has_entity_name = False
     _attr_icon = "mdi:star-circle"
     _attr_native_unit_of_measurement = "points"
     _attr_should_poll = False
@@ -31,6 +30,7 @@ class DailyCompletionPointsSensor(SensorEntity):
     def __init__(self, entry: ConfigEntry, tracker) -> None:
         self._entry = entry
         self._tracker = tracker
+        self._attr_name = f"{entry.title} — Completion points"
         self._attr_unique_id = f"{entry.entry_id}_completion_points"
 
     @property

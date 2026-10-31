@@ -3,10 +3,11 @@
     "step": {
       "user": {
         "title": "Chastity Calendar",
-        "description": "Choose services to track and optionally enable Obedience sync. Each selected service gets its own credentials page. Connecting services requires internet access.",
+        "description": "Give this calendar a name, then choose the services to track and optionally enable Obedience sync. Each setup has its own credentials, calendar, session history, points and settings.",
         "data": {
           "services": "Services to track (select any combination, or none)",
-          "obedience_enabled": "Configure Obedience habit syncing"
+          "obedience_enabled": "Configure Obedience habit syncing",
+          "instance_name": "Name for this setup (for example John or Craig)"
         }
       },
       "emlalock": {
@@ -46,7 +47,6 @@
       }
     },
     "abort": {
-      "single_instance_allowed": "Only one Chastity Calendar instance is supported.",
       "obedience_https_required": "Obedience authorization needs an HTTPS Home Assistant URL. Configure an HTTPS external URL, or enable Home Assistant Cloud Remote UI.",
       "obedience_authorization_failed": "Obedience authorization could not be verified. Please try again."
     }
@@ -54,19 +54,11 @@
   "options": {
     "step": {
       "init": {
-        "title": "Calendar and service connections",
-        "description": "Configure calendar events, tracked services, polling, and monthly reminders. Enable Obedience to open its own separate credentials and habit setup page. Saved calendar history remains local.",
+        "title": "Notification preferences",
+        "description": "Change only the monthly notification destination and notification targets. Other settings are fixed after initial setup.",
         "data": {
-          "events": "Monthly events (JSON)",
-          "services": "Services to track (select any combination, or none)",
-          "poll_minutes": "Polling interval (minutes)",
           "monthly_notification_destination": "Monthly theme notification destination",
-          "monthly_notification_targets": "Phone notification targets (select one or multiple phones)",
-          "obedience_extension_id": "Obedience extension ID",
-          "obedience_secret": "Obedience extension secret",
-          "obedience_daily_habit_id": "Obedience daily-completion habit ID",
-          "obedience_yearly_habit_id": "Obedience yearly-bonus habit ID",
-          "obedience_enabled": "Enable Obedience habit syncing"
+          "monthly_notification_targets": "Phone notification targets (select one or multiple phones)"
         }
       },
       "emlalock": {
