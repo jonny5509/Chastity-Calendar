@@ -15,6 +15,7 @@ from homeassistant.util import dt as dt_util
 
 from .const import (
     CONF_EVENTS,
+    CONF_INSTANCE_NAME,
     CONF_MONTHLY_NOTIFICATION_DESTINATION,
     CONF_MONTHLY_NOTIFICATION_TARGETS,
     DEFAULT_EVENTS,
@@ -29,11 +30,6 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up calendar, persistent session history, and monthly reminders."""
-    # Older installs may retain the original upstream config-entry title even
-    # after the manifest and config flow have been renamed.
-    if entry.title != "Chastity Calendar":
-        hass.config_entries.async_update_entry(entry, title="Chastity Calendar")
-
     from .session_tracker import SessionHistory
 
     points = ObediencePoints(hass, entry)
@@ -48,43 +44,63 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await _async_setup_monthly_notification(hass, entry)
     await async_setup_random_captions(hass, entry)
     if not hass.services.has_service(DOMAIN, "mark_day_complete"):
+        def get_instance_tracker(call):
+            """Resolve one tracker by setup name; never mix account data."""
+            trackers = hass.data.get(DOMAIN, {}).get("points", {})
+            requested_name = call.data.get("instance_name")
+            entries = {
+                config_entry.entry_id: config_entry
+                for config_entry in hass.config_entries.async_entries(DOMAIN)
+            }
+            if requested_name:
+                matches = [
+                    tracker for entry_id, tracker in trackers.items()
+                    if entry_id in entries and entries[entry_id].title == requested_name
+                ]
+                if len(matches) == 1:
+                    return matches[0]
+                raise vol.Invalid(
+                    f"No unique Chastity Calendar setup named '{requested_name}' was found."
+                )
+            if len(trackers) == 1:
+                return next(iter(trackers.values()))
+            raise vol.Invalid(
+                "Specify instance_name when more than one Chastity Calendar setup is configured."
+            )
+
         async def mark_day_complete(call):
-            """Record a completed day for each configured integration entry."""
-            for point_tracker in hass.data.get(DOMAIN, {}).get("points", {}).values():
-                await point_tracker.async_mark_complete(call)
+            """Record a completed day for the selected integration entry only."""
+            await get_instance_tracker(call).async_mark_complete(call)
 
         hass.services.async_register(
             DOMAIN,
             "mark_day_complete",
             mark_day_complete,
-            schema=vol.Schema({vol.Optional("date"): cv.date}),
+            schema=vol.Schema({
+                vol.Optional("date"): cv.date,
+                vol.Optional("instance_name"): cv.string,
+            }),
         )
     if not hass.services.has_service(DOMAIN, "sync_missing_points"):
-        async def sync_missing_points(_call):
-            """Retry Obedience habit increments missing from the local completion ledger."""
-            trackers = hass.data.get(DOMAIN, {}).get("points", {})
-            if not trackers:
-                message = "No Chastity Calendar point tracker is loaded."
+        async def sync_missing_points(call):
+            """Retry missing Obedience syncs for the selected setup only."""
+            tracker = get_instance_tracker(call)
+            result = await tracker.async_sync_missing_points()
+            if not result["eligible"]:
+                message = "Obedience sync is disabled or no daily habit ID is configured."
             else:
-                summaries = []
-                for point_tracker in trackers.values():
-                    result = await point_tracker.async_sync_missing_points()
-                    if not result["eligible"]:
-                        summaries.append("Obedience sync is disabled or no daily habit ID is configured.")
-                        continue
-                    summaries.append(
-                        f"Found {len(result['missing_dates'])} locally completed date(s) "
-                        f"not marked as synced; {result['synced']} synced and "
-                        f"{result['failed']} still missing after this run."
-                    )
-                message = "\n".join(summaries)
+                message = (
+                    f"Found {len(result['missing_dates'])} locally completed date(s) "
+                    f"not marked as synced; {result['synced']} synced and "
+                    f"{result['failed']} still missing after this run."
+                )
             await hass.services.async_call(
                 "persistent_notification",
                 "create",
                 {
-                    "title": "Chastity Calendar — Obedience sync check",
+                    "title": f"{tracker.entry.title} — Obedience sync check",
                     "message": message,
-                    "notification_id": f"{DOMAIN}_obedience_sync_check",
+                    "notification_id": f"{DOMAIN}_{tracker.entry.entry_id}_obedience_sync_check",
                 },
                 blocking=True,
             )
@@ -93,7 +109,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             DOMAIN,
             "sync_missing_points",
             sync_missing_points,
-            schema=vol.Schema({}),
+            schema=vol.Schema({vol.Optional("instance_name"): cv.string}),
         )
     return True
 
@@ -135,7 +151,7 @@ async def _async_setup_monthly_notification(
                     "persistent_notification",
                     "create",
                     {
-                        "title": "Chastity Calendar",
+                        "title": entry.title,
                         "message": message,
                         "notification_id": f"{DOMAIN}_{entry.entry_id}_monthly_theme",
                     },
@@ -150,7 +166,7 @@ async def _async_setup_monthly_notification(
                 await hass.services.async_call(
                     "notify",
                     "send_message",
-                    {"title": "Chastity Calendar", "message": message},
+                    {"title": entry.title, "message": message},
                     target={"entity_id": targets},
                     blocking=True,
                 )
