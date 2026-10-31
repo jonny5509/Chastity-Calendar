@@ -8,7 +8,6 @@ from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
-from .device import get_device_info
 from .obedience_points import DAILY_POINTS, YEARLY_BONUS, YEARLY_COMPLETIONS
 
 
@@ -33,7 +32,6 @@ class DailyCompletionPointsSensor(SensorEntity):
         self._entry = entry
         self._tracker = tracker
         self._attr_unique_id = f"{entry.entry_id}_completion_points"
-        self._attr_device_info = get_device_info(entry)
 
     @property
     def native_value(self) -> int:
