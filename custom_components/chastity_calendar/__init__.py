@@ -15,7 +15,6 @@ from homeassistant.util import dt as dt_util
 
 from .const import (
     CONF_EVENTS,
-    CONF_INSTANCE_NAME,
     CONF_MONTHLY_NOTIFICATION_DESTINATION,
     CONF_MONTHLY_NOTIFICATION_TARGETS,
     DEFAULT_EVENTS,
@@ -43,31 +42,31 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     await _async_setup_monthly_notification(hass, entry)
     await async_setup_random_captions(hass, entry)
-    if not hass.services.has_service(DOMAIN, "mark_day_complete"):
-        def get_instance_tracker(call):
-            """Resolve one tracker by setup name; never mix account data."""
-            trackers = hass.data.get(DOMAIN, {}).get("points", {})
-            requested_name = call.data.get("instance_name")
-            entries = {
-                config_entry.entry_id: config_entry
-                for config_entry in hass.config_entries.async_entries(DOMAIN)
-            }
-            if requested_name:
-                matches = [
-                    tracker for entry_id, tracker in trackers.items()
-                    if entry_id in entries and entries[entry_id].title == requested_name
-                ]
-                if len(matches) == 1:
-                    return matches[0]
-                raise vol.Invalid(
-                    f"No unique Chastity Calendar setup named '{requested_name}' was found."
-                )
-            if len(trackers) == 1:
-                return next(iter(trackers.values()))
+    def get_instance_tracker(call):
+        """Resolve one tracker by setup name; never mix account data."""
+        trackers = hass.data.get(DOMAIN, {}).get("points", {})
+        requested_name = call.data.get("instance_name")
+        entries = {
+            config_entry.entry_id: config_entry
+            for config_entry in hass.config_entries.async_entries(DOMAIN)
+        }
+        if requested_name:
+            matches = [
+                tracker for entry_id, tracker in trackers.items()
+                if entry_id in entries and entries[entry_id].title == requested_name
+            ]
+            if len(matches) == 1:
+                return matches[0]
             raise vol.Invalid(
-                "Specify instance_name when more than one Chastity Calendar setup is configured."
+                f"No unique Chastity Calendar setup named '{requested_name}' was found."
             )
+        if len(trackers) == 1:
+            return next(iter(trackers.values()))
+        raise vol.Invalid(
+            "Specify instance_name when more than one Chastity Calendar setup is configured."
+        )
 
+    if not hass.services.has_service(DOMAIN, "mark_day_complete"):
         async def mark_day_complete(call):
             """Record a completed day for the selected integration entry only."""
             await get_instance_tracker(call).async_mark_complete(call)
