@@ -8,7 +8,6 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.util import dt as dt_util
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import CONF_EVENTS, DEFAULT_EVENTS, DOMAIN
-from .device import get_device_info
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     """Set up calendar entity."""
@@ -27,7 +26,6 @@ class ChastityCalendar(CalendarEntity):
         self._entry = entry
         self._events = events
         self._attr_unique_id = f"{entry.entry_id}_monthly_themes"
-        self._attr_device_info = get_device_info(entry)
         self._unsub_history = hass.bus.async_listen(f"{DOMAIN}_history_updated", self._history_updated)
 
     async def async_will_remove_from_hass(self) -> None:
