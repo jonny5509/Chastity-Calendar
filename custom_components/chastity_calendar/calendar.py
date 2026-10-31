@@ -16,8 +16,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 
 class ChastityCalendar(CalendarEntity):
     """Calendar with monthly themes and append-only daily session records."""
-    _attr_has_entity_name = True
-    _attr_name = "Monthly themes and session history"
+    _attr_has_entity_name = False
     _attr_icon = "mdi:calendar-heart"
     _attr_should_poll = False
 
@@ -25,6 +24,7 @@ class ChastityCalendar(CalendarEntity):
         self._hass = hass
         self._entry = entry
         self._events = events
+        self._attr_name = f"{entry.title} — Monthly themes and session history"
         self._attr_unique_id = f"{entry.entry_id}_monthly_themes"
         self._unsub_history = hass.bus.async_listen(f"{DOMAIN}_history_updated", self._history_updated)
 
