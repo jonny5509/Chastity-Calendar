@@ -20,6 +20,7 @@ from .const import (
     DOMAIN,
     SERVICE_OPTIONS,
 )
+from .device import get_device_info
 
 
 SERVICE_CREDENTIALS = {
@@ -58,6 +59,7 @@ class ServiceActiveSessionSensor(BinarySensorEntity):
         self._attr_name = f"{SERVICE_OPTIONS[service]} active session"
         self._attr_unique_id = f"{entry.entry_id}_{service}_active_session"
         self._attr_icon = "mdi:lock-check"
+        self._attr_device_info = get_device_info(entry)
 
     @property
     def is_on(self) -> bool | None:
@@ -98,11 +100,12 @@ class ObedienceConnectionStatusSensor(BinarySensorEntity):
 
     _attr_has_entity_name = True
     _attr_name = "Obedience authorization"
-    _attr_unique_id = "obedience_authorization_status"
     _attr_icon = "mdi:cloud-check"
 
     def __init__(self, entry: ConfigEntry) -> None:
         self._entry = entry
+        self._attr_unique_id = f"{entry.entry_id}_obedience_authorization_status"
+        self._attr_device_info = get_device_info(entry)
 
     @property
     def is_on(self) -> bool:
