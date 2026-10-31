@@ -60,7 +60,7 @@ async def _async_start_obedience_authorization(flow):
     callback_url = f"{external_url.rstrip('/')}/api/chastity_calendar/obedience/callback"
     authorization_url = "https://app.obedienceapp.com/home/extension-request?" + urlencode({
         "id": extension_id,
-        "name": "Chastity Calendar",
+        "name": getattr(flow, "_instance_name", "Chastity Calendar"),
         "redirect": callback_url,
     })
     flow._obedience_extension_id = extension_id
