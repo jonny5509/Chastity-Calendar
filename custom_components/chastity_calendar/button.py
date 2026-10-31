@@ -14,6 +14,7 @@ from .const import (
     CONF_MONTHLY_NOTIFICATION_TARGETS,
     DOMAIN,
 )
+from .device import get_device_info
 from .random_captions import get_captions
 
 _LOGGER = logging.getLogger(__name__)
@@ -40,6 +41,7 @@ class UpliftingCaptionButton(ButtonEntity):
         self.hass = hass
         self.entry = entry
         self._attr_unique_id = f"{entry.entry_id}_uplifting_caption"
+        self._attr_device_info = get_device_info(entry)
 
     async def async_press(self) -> None:
         """Send one random caption through the configured notification destination."""
