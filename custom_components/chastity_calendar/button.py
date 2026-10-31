@@ -31,14 +31,14 @@ async def async_setup_entry(
 class UpliftingCaptionButton(ButtonEntity):
     """Send a random commitment caption when a little encouragement is needed."""
 
-    _attr_has_entity_name = True
-    _attr_name = "Send an uplifting caption"
+    _attr_has_entity_name = False
     _attr_icon = "mdi:heart"
     _attr_should_poll = False
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         self.hass = hass
         self.entry = entry
+        self._attr_name = f"{entry.title} — Send an uplifting caption"
         self._attr_unique_id = f"{entry.entry_id}_uplifting_caption"
 
     async def async_press(self) -> None:
@@ -49,7 +49,7 @@ class UpliftingCaptionButton(ButtonEntity):
         )
         targets = settings.get(CONF_MONTHLY_NOTIFICATION_TARGETS, [])
         message = random.choice(get_captions(settings))
-        title = "Chastity Calendar — A Little Encouragement"
+        title = f"{self.entry.title} — A Little Encouragement"
         delivered = False
 
         if destination in ("home_assistant", "both"):
