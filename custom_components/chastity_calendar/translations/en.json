@@ -47,7 +47,6 @@
       }
     },
     "abort": {
-      "single_instance_allowed": "Only one Chastity Calendar instance is supported.",
       "obedience_https_required": "Obedience authorization needs an HTTPS Home Assistant URL. Configure an HTTPS external URL, or enable Home Assistant Cloud Remote UI.",
       "obedience_authorization_failed": "Obedience authorization could not be verified. Please try again."
     }
