@@ -577,7 +577,7 @@ class SessionHistory:
 
     @callback
     def events_between(self, start: date, end: date) -> list[dict[str, Any]]:
-        """Return one daily calendar event per tracked service/session."""
+        """Return at most one daily calendar event per tracked service."""
         result: list[dict[str, Any]] = []
         sessions_by_service: dict[str, list[tuple[str, dict[str, Any], date]]] = {}
         for session_key, session in self.history.get("_sessions", {}).items():
@@ -590,6 +590,7 @@ class SessionHistory:
                 (session_key, session, session_start)
             )
 
+        session_day_emojis = self.history.get("_session_day_emojis", {})
         for day, record in sorted(self.history.items()):
             try:
                 event_date = date.fromisoformat(day)
@@ -599,65 +600,85 @@ class SessionHistory:
             if not start <= event_date < end:
                 continue
 
-            services = record.get("services", [])
             matched_sessions: list[tuple[str, dict[str, Any], date]] = []
-            for service in services:
-                candidates = [
-                    item for item in sessions_by_service.get(str(service), [])
-                    if item[2] <= event_date
-                ]
-                if candidates:
-                    # A service can have multiple tracked sessions; preserve each
-                    # distinct session rather than combining them into one summary.
-                    matched_sessions.extend(candidates)
+            legacy_services: list[str] = []
+            for service_value in record.get("services", []):
+                service = str(service_value)
+                service_sessions = sessions_by_service.get(service, [])
+                if not service_sessions:
+                    # Older history may have daily service records but no session metadata.
+                    legacy_services.append(service)
+                    continue
 
-            if matched_sessions:
-                seen: set[str] = set()
-                for session_key, session, session_start in matched_sessions:
-                    if session_key in seen:
+                candidates = []
+                for item in service_sessions:
+                    session_key, session, session_start = item
+                    if session_start > event_date:
                         continue
-                    seen.add(session_key)
-                    service = str(session.get("service", session_key.split(":", 1)[0]))
-                    emoji = str(
-                        self.history.get("_session_day_emojis", {}).get(
-                            f"{session_key}|{event_date.isoformat()}",
-                            session.get("emoji") or record.get("emoji", "✨"),
-                        )
+                    raw_end = session.get("end_date")
+                    if raw_end:
+                        try:
+                            if event_date > date.fromisoformat(raw_end):
+                                continue
+                        except (TypeError, ValueError):
+                            pass
+                    # Enforce exact recorded session/day membership for sessions
+                    # created with the per-day mapping. Older sessions without any
+                    # mapping keep the date-range fallback for compatibility.
+                    has_day_mapping = any(
+                        key.startswith(f"{session_key}|") for key in session_day_emojis
                     )
-                    start_time = session.get("start_time")
-                    summary = f"{emoji} {service} — Active session"
-                    if event_date == session_start:
-                        summary += " — started"
-                        if start_time:
-                            summary += f" {start_time}"
-                    description = (
-                        f"Session history for {service}. "
-                        f"Session start date: {session_start.isoformat()}."
+                    if has_day_mapping and (
+                        f"{session_key}|{event_date.isoformat()}" not in session_day_emojis
+                    ):
+                        continue
+                    candidates.append(item)
+
+                if candidates:
+                    # One service can have multiple stored session IDs (for example,
+                    # after an API refresh changes IDs). Only its latest session is
+                    # represented on a given day, preventing duplicate calendar rows.
+                    matched_sessions.append(max(candidates, key=lambda item: item[2]))
+
+            for session_key, session, session_start in matched_sessions:
+                service = str(session.get("service", session_key.split(":", 1)[0]))
+                emoji = str(
+                    session_day_emojis.get(
+                        f"{session_key}|{event_date.isoformat()}",
+                        session.get("emoji") or record.get("emoji", "✨"),
                     )
+                )
+                start_time = session.get("start_time")
+                summary = f"{emoji} {service} — Active session"
+                if event_date == session_start:
+                    summary += " — started"
                     if start_time:
-                        description += f" Local start time: {start_time}."
-                    end_date = session.get("end_date")
-                    end_time = session.get("end_time")
-                    if end_date:
-                        description += f" Session end date: {end_date}."
-                    if end_time:
-                        description += f" Local end time: {end_time}."
-                    result.append({
-                        "start": event_date,
-                        "end": event_date + timedelta(days=1),
-                        "summary": summary,
-                        "description": description,
-                    })
-            else:
-                # Keep old saved records visible when they predate per-session metadata.
-                emojis = [
-                    self.history.get("_daily_emojis", {}).get(
-                        event_date.isoformat(), record.get("emoji", "✨")
-                    )
-                ]
-                service_text = ", ".join(str(service) for service in services) or "Unknown service"
+                        summary += f" {start_time}"
+                description = (
+                    f"Session history for {service}. "
+                    f"Session start date: {session_start.isoformat()}."
+                )
+                if start_time:
+                    description += f" Local start time: {start_time}."
+                end_date = session.get("end_date")
+                end_time = session.get("end_time")
+                if end_date:
+                    description += f" Session end date: {end_date}."
+                if end_time:
+                    description += f" Local end time: {end_time}."
+                result.append({
+                    "start": event_date,
+                    "end": event_date + timedelta(days=1),
+                    "summary": summary,
+                    "description": description,
+                })
+
+            for service in legacy_services:
                 start_times = ", ".join(record.get("start_times", []))
-                summary = f"{' '.join(emojis)} Active session — {service_text}"
+                summary = (
+                    f"{self.history.get('_daily_emojis', {}).get(event_date.isoformat(), record.get('emoji', '✨'))} "
+                    f"Active session — {service}"
+                )
                 if start_times:
                     summary += f" — started {start_times}"
                 result.append({
@@ -665,8 +686,17 @@ class SessionHistory:
                     "end": event_date + timedelta(days=1),
                     "summary": summary,
                     "description": (
-                        f"Legacy active-session history for {service_text}. "
+                        f"Legacy active-session history for {service}. "
                         "This saved calendar record is retained for compatibility."
                     ),
+                })
+
+            if not record.get("services"):
+                # Retain old records that have no service list at all.
+                result.append({
+                    "start": event_date,
+                    "end": event_date + timedelta(days=1),
+                    "summary": f"{record.get('emoji', '✨')} Active session",
+                    "description": "Legacy active-session history record.",
                 })
         return sorted(result, key=lambda item: (item["start"], item["summary"]))
